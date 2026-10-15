@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
+import logging
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -19,6 +23,11 @@ from sklearn.svm import SVC
 ROOT = Path(__file__).resolve().parents[2]
 DATA_PATH = ROOT / "data" / "processed" / "heart.csv"
 REPORT_PATH = ROOT / "reports" / "model_comparison.md"
+TRACKING_URI = f"sqlite:///{ROOT / 'mlflow.db'}"
+ARTIFACT_ROOT = ROOT / "mlruns"
+EXPERIMENT_NAME = "heart-disease-2025ae05142"
+REGISTERED_MODEL_NAME = "heart-disease-champion-2025ae05142"
+MLFLOW_SUMMARY_PATH = ROOT / "reports" / "mlflow_summary.md"
 AUTHOR = "2025ae05142"
 TARGET = "num"
 RANDOM_STATE = 42
@@ -188,10 +197,161 @@ def format_report(results: pd.DataFrame, champion: str) -> str:
     return "\n".join(lines) + "\n"
 
 
+def track_models(
+    data: pd.DataFrame,
+    data_path: Path,
+    results: pd.DataFrame,
+    pipelines: dict[str, Pipeline],
+    champion: str,
+    report_path: Path,
+) -> None:
+    """Persist candidate runs, artifacts, and the champion in the local registry."""
+    os.environ["MLFLOW_DISABLE_TELEMETRY"] = "true"
+    os.environ["MLFLOW_DISABLE_AGENT_HINT"] = "true"
+
+    import mlflow
+    import mlflow.sklearn
+    from mlflow.models import infer_signature
+    from mlflow.tracking import MlflowClient
+
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter(f"%(levelname)s Author: {AUTHOR} %(message)s"))
+    logger = logging.getLogger("mlflow")
+    logger.handlers = [handler]
+    logger.propagate = False
+
+    figures = [
+        ROOT / "reports" / "figures" / name
+        for name in (
+            "feature_histograms.png",
+            "correlation_heatmap.png",
+            "class_balance.png",
+        )
+    ]
+    for figure in figures:
+        if not figure.is_file():
+            raise FileNotFoundError(f"Required EDA artifact not found: {figure}")
+
+    mlflow.set_tracking_uri(TRACKING_URI)
+    mlflow.set_registry_uri(TRACKING_URI)
+    client = MlflowClient(tracking_uri=TRACKING_URI, registry_uri=TRACKING_URI)
+    experiment = client.get_experiment_by_name(EXPERIMENT_NAME)
+    if experiment is None:
+        experiment_id = client.create_experiment(
+            EXPERIMENT_NAME,
+            artifact_location=ARTIFACT_ROOT.as_uri(),
+            tags={"author": AUTHOR},
+        )
+    else:
+        if experiment.lifecycle_stage != "active":
+            raise ValueError(f"MLflow experiment {EXPERIMENT_NAME!r} is not active")
+        if experiment.artifact_location != ARTIFACT_ROOT.as_uri():
+            raise ValueError("Existing MLflow experiment has an unexpected artifact location")
+        experiment_id = experiment.experiment_id
+
+    dataset_hash = hashlib.sha256(data_path.read_bytes()).hexdigest()
+    features = data[NUMERIC_FEATURES + CATEGORICAL_FEATURES]
+    input_example = features.head(3)
+    records: list[dict[str, str]] = []
+    for row in results.to_dict(orient="records"):
+        name = str(row["model"])
+        pipeline = pipelines[name]
+        with mlflow.start_run(
+            experiment_id=experiment_id,
+            run_name=name,
+            tags={
+                "author": AUTHOR,
+                "model": name,
+                "champion": str(name == champion).lower(),
+                "dataset_sha256": dataset_hash,
+                "confidence_status": "uncalibrated",
+            },
+        ) as run:
+            params = {
+                key: str(value)
+                for key, value in pipeline.get_params(deep=True).items()
+            }
+            params.update(
+                {
+                    "cv_folds": str(N_SPLITS),
+                    "cv_seed": str(RANDOM_STATE),
+                    "cv_shuffle": "true",
+                    "rows": str(len(data)),
+                    "features": json.dumps(list(features.columns)),
+                    "selection_rule": "recall_mean, roc_auc_mean, precision_mean",
+                }
+            )
+            mlflow.log_params(params)
+            mlflow.log_metrics(
+                {key: float(value) for key, value in row.items() if key != "model"}
+            )
+            for figure in figures:
+                mlflow.log_artifact(str(figure), artifact_path="eda")
+            mlflow.log_artifact(str(report_path), artifact_path="reports")
+            model_info = mlflow.sklearn.log_model(
+                sk_model=pipeline,
+                name="pipeline",
+                serialization_format="cloudpickle",
+                signature=infer_signature(input_example, pipeline.predict(input_example)),
+                input_example=input_example,
+                pip_requirements=str(ROOT / "requirements.txt"),
+                metadata={"author": AUTHOR, "confidence_status": "uncalibrated"},
+            )
+            records.append(
+                {"model": name, "run_id": run.info.run_id, "model_uri": model_info.model_uri}
+            )
+        print(f"Logged {name}: run_id={run.info.run_id} (Author: {AUTHOR})")
+
+    champion_record = next(record for record in records if record["model"] == champion)
+    if not client.search_registered_models(f"name = '{REGISTERED_MODEL_NAME}'"):
+        client.create_registered_model(REGISTERED_MODEL_NAME, tags={"author": AUTHOR})
+    version = client.create_model_version(
+        name=REGISTERED_MODEL_NAME,
+        source=champion_record["model_uri"],
+        run_id=champion_record["run_id"],
+        tags={"author": AUTHOR, "confidence_status": "uncalibrated"},
+    )
+    lines = [
+        f"# MLflow summary - Author: `{AUTHOR}`",
+        "",
+        f"- Tracking and registry URI: `{TRACKING_URI}`",
+        f"- Experiment: `{EXPERIMENT_NAME}` (ID `{experiment_id}`).",
+        f"- Artifact store: `{ARTIFACT_ROOT.as_uri()}`",
+        f"- Dataset SHA-256: `{dataset_hash}`",
+        "- Metrics are held-out CV means and sample standard deviations; "
+        "logged pipelines are subsequently fit on all 303 rows.",
+        "",
+        "| Model | Run ID | Model URI |",
+        "|---|---|---|",
+        *[
+            f"| {record['model']} | `{record['run_id']}` | `{record['model_uri']}` |"
+            for record in records
+        ],
+        "",
+        f"- Champion: `{champion}`; run ID: `{champion_record['run_id']}`.",
+        f"- Registered model: `{REGISTERED_MODEL_NAME}`, version `{version.version}`.",
+        f"- Registry URI: `models:/{REGISTERED_MODEL_NAME}/{version.version}`",
+        "- Each run contains parameters, all four CV metrics and standard deviations, "
+        "the complete fitted sklearn pipeline, three EDA figures, and the comparison report.",
+        "- The champion is not calibrated and does not expose confidence probabilities. "
+        "The confidence plan in docs/DECISIONS.md must be implemented and evaluated "
+        "before packaging a confidence-bearing inference artifact in Phase 4.",
+        "",
+        "Reproduce: `python3 src/train/train.py` from the repository root. "
+        "Each execution appends runs and a new registry version; the summary records "
+        "the latest successful batch.",
+    ]
+    MLFLOW_SUMMARY_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(
+        f"Registered {champion}: version={version.version}; "
+        f"wrote {MLFLOW_SUMMARY_PATH} (Author: {AUTHOR})"
+    )
+
+
 def train(data_path: Path = DATA_PATH, report_path: Path = REPORT_PATH) -> pd.DataFrame:
     """Evaluate candidate models, print the comparison, and save its report."""
     data = pd.read_csv(data_path)
-    results, _ = evaluate_models(data)
+    results, pipelines = evaluate_models(data)
     champion = select_champion(results)
     report = format_report(results, champion)
     report_path.parent.mkdir(parents=True, exist_ok=True)
@@ -203,6 +363,7 @@ def train(data_path: Path = DATA_PATH, report_path: Path = REPORT_PATH) -> pd.Da
     print(console_results.to_string(index=False, float_format=lambda value: f"{value:.4f}"))
     print(f"Selected champion: {champion} (Author: {AUTHOR})")
     print(f"Wrote {report_path} (Author: {AUTHOR})")
+    track_models(data, data_path, results, pipelines, champion, report_path)
     return results
 
 

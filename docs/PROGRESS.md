@@ -9,7 +9,7 @@ Complete one phase at a time. A phase is complete only when its gate is met; rec
 | 0 — Lab baseline | pass | `docs/ENVIRONMENT.md` records the Linux VM baseline. Python 3.12.9 satisfies the >=3.10 gate; Docker and Minikube are installed. GitHub Actions API access returned HTTP 200; workflow execution remains unverified until Phase 5. |
 | 1 — Data and EDA | pass | UCI download, preparation, and EDA commands succeeded; 303 rows, target counts 164/139, 6 reported missing feature values, summary, and all three figures verified below. |
 | 2 — Features and models | pass | `python3 src/train/train.py` completed reproducibly; all three leakage-safe candidate pipelines were evaluated with five-fold stratified CV and all four metrics, and `reports/model_comparison.md` records the comparison and champion rule. |
-| 3 — Experiment tracking | not started | Local MLflow has one run per model, required artifacts/tags, and a registered champion. |
+| 3 — Experiment tracking | pass | Three FINISHED local MLflow runs with required parameters, metrics, author tags, fitted pipelines, and EDA artifacts; champion registry version 1 is READY. Reloaded all three pipelines and verified predictions on 303 rows. |
 | 4 — Packaging and reproducibility | not started | A fresh virtual environment can install, train, and run inference on a sample. |
 | 5 — Tests and CI | not started | Local lint/tests pass; workflow contains lint, test, and train jobs. |
 | 6 — Container | not started | Docker build/run and `/predict` smoke test succeed; request/response are recorded. |
@@ -88,4 +88,51 @@ After regeneration, repeated the same three commands in the main checkout so its
 - **Phase 2 review corrections:** Regenerated metrics confirm Random Forest ROC-AUC is `0.9144 ± 0.0255`; the report and progress table now use four decimal places and agree. Training console output now has an `author=2025ae05142` column on every model row; its header, champion line, and report-path line also include the author. Checked every emitted console line.
 - **Confidence plan before artifact packaging:** The Phase 2 decisions document specifies wrapping the complete preprocessing-plus-RBF-SVC pipeline in sigmoid `CalibratedClassifierCV` with five shuffled stratified folds (`random_state=42`, `ensemble=True`), returning the winning class's averaged calibrated probability as `confidence`, and checking Brier score/reliability before calling it calibrated. No confidence-bearing artifact has been packaged in this phase.
 
-**Next:** Review Phase 2 corrections, then send `start phase 3`.
+## Phase 3 evidence
+
+Author: `2025ae05142`
+
+Execution location: Prayogshala Linux VM, user `s2025ae05142`, repository `/home/s2025ae05142/workspace/Assignment-I/heart-disease-prediction`, Python 3.12.9.
+
+- Probed MLflow availability (not installed), then added `mlflow==3.17.1` and ran `python3 -m pip install --user -r requirements.txt` successfully. Pip warned that user-level CLI scripts are not on `PATH`; the Python APIs used below work without a PATH change.
+- Recorded tracking, artifact, registry, and serialization choices in `docs/DECISIONS.md`. The training command now tracks each candidate in local SQLite `mlflow.db`, with file artifacts under `mlruns/`; both are gitignored, along with SQLite sidecars. MLflow telemetry is disabled before import in the training flow.
+- `python3 src/train/train.py` successfully logged the three candidates and registered `rbf_svc` as `heart-disease-champion-2025ae05142`, version `1`. Generated `reports/mlflow_summary.md` contains real run IDs and model URIs from this VM.
+- Verified each FINISHED run's author/model/champion tags, data SHA-256, estimator/preprocessing parameters, CV seed and fold count, all four metric means and sample standard deviations, three EDA figures, comparison report, model signature, and fitted full pipeline. Reloaded every logged model and the registered champion through MLflow; predictions were valid binary labels for all 303 rows. Logged metrics match the generated Phase 2 comparison exactly.
+- `git diff --exit-code -- reports/model_comparison.md` passed: tracking did not alter Phase 2 CV results.
+- `git check-ignore mlflow.db mlflow.db-wal mlruns/` confirmed runtime storage is excluded. `git ls-files mlflow.db mlruns` returned no tracked runtime files. `git diff --check` passed and editor diagnostics found no Python errors.
+
+### Failures retained and resolved
+
+1. First tracking attempt raised `TypeError: Object of type ColumnTransformer is not JSON serializable` while logging nested parameters. Fixed by storing sklearn parameter representations as strings; failed run `aedaaf53749645348e8fd8d1b771478f` remains visible.
+2. Next attempt raised `UntrustedTypesFoundException` for `numpy.dtype` using MLflow 3.17.1's default skops serializer. Explicit cloudpickle serialization resolved this compatibility issue; failed run `84497ea7fb344de58b1116ac4879da06` remains visible. MLflow's warning about loading only trusted pickle-based artifacts is retained, not suppressed.
+
+### Exact gate listing command and output
+
+Ran from the repository root:
+
+```sh
+MLFLOW_DISABLE_TELEMETRY=true MLFLOW_DISABLE_AGENT_HINT=true python3 - <<'PY'
+from pathlib import Path
+from mlflow import MlflowClient
+uri = f"sqlite:///{Path.cwd() / 'mlflow.db'}"
+client = MlflowClient(tracking_uri=uri, registry_uri=uri)
+experiment = client.get_experiment_by_name('heart-disease-2025ae05142')
+for run in client.search_runs([experiment.experiment_id], order_by=['start_time ASC']):
+    print('Author: 2025ae05142', run.data.tags['model'], run.info.status, run.info.run_id)
+for version in client.search_model_versions("name = 'heart-disease-champion-2025ae05142'"):
+    print('Author: 2025ae05142 registry', version.version, version.status, version.run_id)
+PY
+```
+
+```text
+Author: 2025ae05142 logistic_regression FAILED aedaaf53749645348e8fd8d1b771478f
+Author: 2025ae05142 logistic_regression FAILED 84497ea7fb344de58b1116ac4879da06
+Author: 2025ae05142 logistic_regression FINISHED 36f54d74d4604552aaeec49ca8e4dd5c
+Author: 2025ae05142 random_forest FINISHED f1fd9806c995443db667aee24e95dd87
+Author: 2025ae05142 rbf_svc FINISHED b31ee47545d04752a9bd7f9b9f7b1b9c
+Author: 2025ae05142 registry 1 READY b31ee47545d04752a9bd7f9b9f7b1b9c
+```
+
+The Phase 3 champion remains the uncalibrated Phase 2 pipeline. Probability calibration and confidence validation are documented plans for Phase 4, not completed work. No serving, packaging, commit, or push was performed.
+
+**Next:** Review Phase 3, then send `start phase 4`.
