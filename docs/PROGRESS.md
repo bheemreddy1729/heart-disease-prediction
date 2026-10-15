@@ -11,7 +11,7 @@ Complete one phase at a time. A phase is complete only when its gate is met; rec
 | 2 — Features and models | pass | `python3 src/train/train.py` completed reproducibly; all three leakage-safe candidate pipelines were evaluated with five-fold stratified CV and all four metrics, and `reports/model_comparison.md` records the comparison and champion rule. |
 | 3 — Experiment tracking | pass | Three FINISHED local MLflow runs with required parameters, metrics, author tags, fitted pipelines, and EDA artifacts; champion registry version 1 is READY. Reloaded all three pipelines and verified predictions on 303 rows. |
 | 4 — Packaging and reproducibility | pass | Fresh isolated `.venv-phase4` installed pinned requirements, regenerated data/EDA, trained, packaged the full calibrated pipeline, and produced the sample JSON below. Repackaging reproduced artifact/report hashes. |
-| 5 — Tests and CI | local gate pass; hosted run pending | Ruff and 51 pytest cases pass; workflow defines lint, test, and dependent train jobs. All shell/Python job commands passed in an isolated checkout. Publishing and hosted execution await explicit authorization. |
+| 5 — Tests and CI | pass | Ruff and 51 pytest cases pass locally; hosted run `38787031961` for commit `7589a63` passed lint, test, and train, verified registry reload/inference, and uploaded training evidence. All three screenshots saved. |
 | 6 — Container | not started | Docker build/run and `/predict` smoke test succeed; request/response are recorded. |
 | 7 — Kubernetes | not started | Minikube pod runs and the sample succeeds through the Service; command output and response are recorded. |
 | 8 — Monitoring and logging | not started | A prediction creates a JSON log line and increments Prometheus request metrics. |
@@ -300,3 +300,13 @@ Author: `2025ae05142`
 - Captured and visually checked [local validation](../screenshots/phase-5-local-validation.png) from an actual VM terminal: Python 3.12.9, `pip check` successful, ruff successful, and **51 passed in 16.72s**. Cropped unrelated desktop chrome; no output was recreated.
 - Created local commit `9988eba` containing Phase 5 implementation and the local screenshot. Initial `git push origin main` failed with `fatal: could not read Username for 'https://github.com': terminal prompts disabled`. Configured the existing authenticated GitHub CLI credential helper using `gh auth setup-git` and retried.
 - The authenticated `git push origin main` was rejected: `refusing to allow an OAuth App to create or update workflow .github/workflows/ci.yml without workflow scope`. No remote changes or hosted workflow run occurred. Hosted run/training-evidence screenshots remain blocked until the student grants workflow scope or publishes this commit through an appropriately authorized client. Stopped publication attempts rather than bypassing the permission restriction.
+
+### Phase 5 hosted success and remaining screenshots
+
+Author: `2025ae05142`
+
+- After the student resolved publication permissions, confirmed commit `7589a6380175873c3f8eed0a009f502a9e559f10` was published on `main`. Its actual push-triggered [Actions run 38787031961](https://github.com/bheemreddy1729/heart-disease-prediction/actions/runs/38787031961) completed with **success**: lint, test, and train all green; total duration 2m 22s.
+- Retrieved the actual hosted train-job log with `gh run view 38787031961 --job 116602044720 --log`. It confirms packaged-artifact/sample prediction verification, three MLflow runs and registry reload, and successful upload of `training-evidence-2025ae05142` (1,531,644 bytes; artifact ID `11997744157`). Sample confidence remained `0.7466949562461239`.
+- Saved and visually checked actual GitHub UI captures: [green hosted run](../screenshots/phase-5-actions-run.png) and [uploaded training evidence](../screenshots/phase-5-training-evidence.png). Together with [local validation](../screenshots/phase-5-local-validation.png), all three requested Phase 5 screenshots now exist. No mocked or recreated CI UI was used.
+- GitHub displayed non-failing Node.js action-runtime deprecation warnings and an upcoming `ubuntu-latest` migration notice. These did not prevent any job or artifact upload from succeeding.
+- Closed the temporary isolated Firefox capture process. Phase 5's hosted gate is now met; the earlier pending/permission entries above are historical. No Phase 6 work was started.
