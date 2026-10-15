@@ -8,7 +8,7 @@ Complete one phase at a time. A phase is complete only when its gate is met; rec
 |---|---|---|
 | 0 — Lab baseline | pass | `docs/ENVIRONMENT.md` records the Linux VM baseline. Python 3.12.9 satisfies the >=3.10 gate; Docker and Minikube are installed. GitHub Actions API access returned HTTP 200; workflow execution remains unverified until Phase 5. |
 | 1 — Data and EDA | pass | UCI download, preparation, and EDA commands succeeded; 303 rows, target counts 164/139, 6 reported missing feature values, summary, and all three figures verified below. |
-| 2 — Features and models | not started | Cross-validated comparison and report include accuracy, precision, recall, and ROC-AUC for each model. |
+| 2 — Features and models | pass | `python3 src/train/train.py` completed reproducibly; all three leakage-safe candidate pipelines were evaluated with five-fold stratified CV and all four metrics, and `reports/model_comparison.md` records the comparison and champion rule. |
 | 3 — Experiment tracking | not started | Local MLflow has one run per model, required artifacts/tags, and a registered champion. |
 | 4 — Packaging and reproducibility | not started | A fresh virtual environment can install, train, and run inference on a sample. |
 | 5 — Tests and CI | not started | Local lint/tests pass; workflow contains lint, test, and train jobs. |
@@ -67,4 +67,22 @@ Verified that this checkout regenerated all seven non-empty outputs (raw source,
 
 After regeneration, repeated the same three commands in the main checkout so its generated raw-data README uses the same attributed format. Compared SHA-256 hashes for all seven Phase 1 outputs between the main and detached checkouts; every file matched byte-for-byte. `git diff --check` and Python AST parsing of all three scripts passed.
 
-**Next:** Review Phase 1 evidence, then send `start phase 2`.
+**Next:** Review Phase 2 evidence, then send `start phase 3`.
+
+## Phase 2 evidence
+
+- Recorded classifier, preprocessing, validation, seed, champion-selection, rationale, alternatives, and scikit-learn documentation sources in the Phase 2 section of `docs/DECISIONS.md` before implementing the training script.
+- Added `scikit-learn==1.9.1` to `requirements.txt`; installed the pinned requirements user-wide with `python3 -m pip install --user -r requirements.txt` on the VM. Runtime versions used: Python 3.12.9, pandas 2.3.3, scikit-learn 1.9.1, and SciPy 1.18.1.
+- `python3 src/train/train.py` completed successfully from the repository root and wrote `reports/model_comparison.md`. Its console output included `Author: 2025ae05142`.
+- The training module compares Logistic Regression, Random Forest, and RBF SVC. Its preprocessing is part of each scikit-learn `Pipeline`: numeric median imputation and scaling, categorical most-frequent imputation and one-hot encoding. `cross_validate` evaluates the full pipeline inside each fold, so preprocessing statistics and categories are learned only from that fold's training partition.
+- Validation: five-fold `StratifiedKFold(shuffle=True, random_state=42)`, reporting mean and sample standard deviation for accuracy, precision, recall, and ROC-AUC.
+- Champion rule: highest mean recall, then ROC-AUC, then precision; accuracy is reported but is not the selection criterion. The resulting champion is `rbf_svc`.
+- Results (mean ± sample standard deviation):
+
+  | Model | Accuracy | Precision | Recall | ROC-AUC |
+  |---|---:|---:|---:|---:|
+  | logistic_regression | 0.855 ± 0.054 | 0.874 ± 0.064 | 0.798 ± 0.081 | 0.919 ± 0.023 |
+  | random_forest | 0.838 ± 0.031 | 0.851 ± 0.061 | 0.791 ± 0.031 | 0.914 ± 0.026 |
+  | rbf_svc | 0.845 ± 0.051 | 0.850 ± 0.067 | 0.806 ± 0.066 | 0.902 ± 0.032 |
+- Re-ran `python3 src/train/train.py`; `sha256sum --check /tmp/phase2-model-report.sha256` confirmed the report was byte-for-byte identical. Separately verified all three fitted pipelines predict three rows, every metric mean is within [0, 1], standard deviations are nonnegative, all four metrics and all candidates appear in the report, and its author header is present.
+- `git diff --check` passed.
