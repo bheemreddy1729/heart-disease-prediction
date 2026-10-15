@@ -1,5 +1,7 @@
 # Phase 0: Lab baseline
 
+Author: `2025ae05142`
+
 Recorded: 2026-10-15
 
 ## VM
@@ -46,5 +48,5 @@ tmpfs                                                                           
 - Docker CLI and daemon are available.
 - Minikube v1.35.0 is installed. No `minikube` profile/cluster exists yet; cluster startup is a later deployment-phase gate.
 - The standalone `kubectl` command is not installed. The Kubernetes deployment phase must resolve this before it can meet its gate.
-- The GitHub repository API and its Actions workflows endpoint responded with HTTP 200. No local `gh` CLI is installed; GitHub Actions runs will be verified through GitHub.
-- Available memory is 15 GiB (11 GiB available at capture time); revisit resource use before monitoring services are started.
+- The GitHub repository API and its Actions workflows endpoint responded with HTTP 200. This confirms endpoint access only, not permission or capacity to execute workflows. No local `gh` CLI is installed; workflow execution remains unverified until Phase 5.
+- Total memory is 15 GiB; 11 GiB was available at capture time. Revisit resource use before monitoring services are started.

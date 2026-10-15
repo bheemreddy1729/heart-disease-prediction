@@ -1,5 +1,7 @@
 # Project decisions
 
+Author: `2025ae05142`
+
 Decisions are recorded as each phase reaches its design gate. Do not substitute third-party student implementations for original project work.
 
 ## Phase 0
@@ -10,5 +12,5 @@ Decisions are recorded as each phase reaches its design gate. Do not substitute 
 - **Data and target:** Use the UCI Heart Disease processed Cleveland dataset (dataset 45). Treat target value 0 as absence and values 1–4 as presence.
 - **Leakage prevention:** Any model imputers, encoders, and scalers must be fit as part of the training pipeline, within training folds where cross-validation is used.
 - **Run attribution:** Tag each MLflow run, log line, and report header with `2025ae05142`.
-- **Cluster and CI:** Target local Minikube, not a managed Kubernetes service. GitHub Actions is reachable through the repository's Actions API; do not push or trigger a workflow unless explicitly requested.
+- **Cluster and CI:** Target local Minikube on the assigned VM to keep deployment reproducible without requiring a public-cloud account. The repository's Actions API is reachable, but workflow execution remains unverified until Phase 5; do not push or trigger a workflow unless explicitly requested.
 - **Deferred decisions:** EDA missing-value display/handling, the third classifier, the random seed, champion selection rule, and serving/deployment details will be decided and justified in their relevant phases.

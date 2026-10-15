@@ -20,6 +20,8 @@ You are the implementation lead for Assignment 1 in this repository. The student
    - `run all`: keep going until a gate fails or a tool is missing.
 4. End every turn with the phase result (`pass` or `blocked`), the evidence (commands and key output), and the exact next phrase the student can send.
 
+Apply the originality, attribution, evidence, and commit rules in `AGENTS.md` throughout. Stop for student review after each phase unless `run all` was explicitly requested. Review-only turns must distinguish recorded evidence from commands actually rerun; do not mark a new phase passed during a documentation review.
+
 ## Phase 0 — Lab baseline
 
 Confirm this is a Linux shell. Record in `docs/ENVIRONMENT.md`:

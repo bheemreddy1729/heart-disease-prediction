@@ -1,10 +1,12 @@
 # Assignment progress
 
+Author: `2025ae05142`
+
 Complete one phase at a time. A phase is complete only when its gate is met; record blockers and evidence here.
 
 | Phase | Status | Gate / evidence |
 |---|---|---|
-| 0 — Lab baseline | **passed** | `docs/ENVIRONMENT.md` records the Linux VM baseline. Python 3.12.9 satisfies the >=3.10 gate; Docker and Minikube are installed, and the GitHub Actions API responds HTTP 200. |
+| 0 — Lab baseline | pass | `docs/ENVIRONMENT.md` records the Linux VM baseline. Python 3.12.9 satisfies the >=3.10 gate; Docker and Minikube are installed. GitHub Actions API access returned HTTP 200; workflow execution remains unverified until Phase 5. |
 | 1 — Data and EDA | not started | UCI download and EDA scripts run from a clean checkout; processed data, summary, and three figures exist. |
 | 2 — Features and models | not started | Cross-validated comparison and report include accuracy, precision, recall, and ROC-AUC for each model. |
 | 3 — Experiment tracking | not started | Local MLflow has one run per model, required artifacts/tags, and a registered champion. |
@@ -22,8 +24,15 @@ Complete one phase at a time. A phase is complete only when its gate is met; rec
 - Docker: CLI is installed and `docker info` reached the Engine server.
 - Minikube: `v1.35.0` is installed; `minikube status` reports no profile exists yet.
 - Kubernetes client: `kubectl version --client` exited 127 (`/bin/bash: line 1: kubectl: command not found`). This is recorded for the Kubernetes phase; it does not fail the Phase 0 gate.
-- GitHub Actions: `curl` to `https://api.github.com/repos/bheemreddy1729/heart-disease-prediction/actions/workflows` returned HTTP 200.
+- GitHub Actions: `curl` to `https://api.github.com/repos/bheemreddy1729/heart-disease-prediction/actions/workflows` returned HTTP 200. This verifies endpoint access only; workflow execution remains unverified until Phase 5.
 - Repository: existing `origin` is `https://github.com/bheemreddy1729/heart-disease-prediction.git`; no git initialization or push was performed.
 - No packages or tools were installed.
 
-**Next:** Send `start phase 1` when ready.
+## Phase 0 review corrections
+
+- Added author attribution to the baseline documents and normalized the Phase 0 state to `pass`.
+- Corrected the memory description to distinguish total from available memory.
+- Clarified that GitHub Actions endpoint access is not workflow execution evidence.
+- Reviewed the committed VM evidence remotely; no VM commands were rerun during this documentation review.
+
+**Next:** Review these corrections, then send `phase 1` in the VM window when ready.
