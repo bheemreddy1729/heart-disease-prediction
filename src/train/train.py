@@ -173,7 +173,7 @@ def format_report(results: pd.DataFrame, champion: str) -> str:
         lines.append(
             f"| {row.model} | "
             + " | ".join(
-                f"{values[metric]:.3f} ± {deviations[metric]:.3f}"
+                f"{values[metric]:.4f} ± {deviations[metric]:.4f}"
                 for metric in METRICS
             )
             + " |"
@@ -197,10 +197,12 @@ def train(data_path: Path = DATA_PATH, report_path: Path = REPORT_PATH) -> pd.Da
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(report, encoding="utf-8")
 
+    console_results = results.copy()
+    console_results.insert(0, f"author={AUTHOR}", AUTHOR)
     print(f"Model comparison (Author: {AUTHOR})")
-    print(results.to_string(index=False, float_format=lambda value: f"{value:.4f}"))
-    print(f"Selected champion: {champion}")
-    print(f"Wrote {report_path}")
+    print(console_results.to_string(index=False, float_format=lambda value: f"{value:.4f}"))
+    print(f"Selected champion: {champion} (Author: {AUTHOR})")
+    print(f"Wrote {report_path} (Author: {AUTHOR})")
     return results
 
 

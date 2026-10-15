@@ -7,8 +7,8 @@
 
 | Model | Accuracy | Precision | Recall | ROC-AUC |
 |---|---:|---:|---:|---:|
-| logistic_regression | 0.855 ± 0.054 | 0.874 ± 0.064 | 0.798 ± 0.081 | 0.919 ± 0.023 |
-| random_forest | 0.838 ± 0.031 | 0.851 ± 0.061 | 0.791 ± 0.031 | 0.914 ± 0.025 |
-| rbf_svc | 0.845 ± 0.051 | 0.850 ± 0.067 | 0.806 ± 0.066 | 0.902 ± 0.032 |
+| logistic_regression | 0.8547 ± 0.0542 | 0.8744 ± 0.0640 | 0.7979 ± 0.0812 | 0.9188 ± 0.0232 |
+| random_forest | 0.8384 ± 0.0310 | 0.8505 ± 0.0612 | 0.7913 ± 0.0306 | 0.9144 ± 0.0255 |
+| rbf_svc | 0.8448 ± 0.0506 | 0.8501 ± 0.0666 | 0.8056 ± 0.0656 | 0.9021 ± 0.0319 |
 
 Cross-validation scores estimate performance on held-out folds; they are not a claim of clinical readiness.
