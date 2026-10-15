@@ -1,0 +1,140 @@
+name: Tests and training - 2025ae05142
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  MLFLOW_DISABLE_TELEMETRY: "true"
+  MLFLOW_DISABLE_AGENT_HINT: "true"
+  MPLBACKEND: Agg
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - run: python -m pip install -r requirements-dev.txt
+      - name: Lint - Author 2025ae05142
+        run: python -m ruff check .
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - run: python -m pip install -r requirements-dev.txt
+      - name: Test - Author 2025ae05142
+        run: python -m pytest -q
+
+  train:
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - run: python -m pip install -r requirements.txt
+      - name: Reproduce from committed UCI source - Author 2025ae05142
+        run: |
+          python src/data/prepare.py
+          python src/eda/explore.py
+          python src/train/train.py
+          python -m src.train.package
+          python -m src.infer.predict --input examples/patient.json > prediction.json
+      - name: Verify outputs - Author 2025ae05142
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          import mlflow.sklearn
+          import pandas as pd
+          from mlflow.tracking import MlflowClient
+
+          from src.train.train import (
+              CATEGORICAL_FEATURES,
+              EXPERIMENT_NAME,
+              METRICS,
+              NUMERIC_FEATURES,
+              REGISTERED_MODEL_NAME,
+              TRACKING_URI,
+          )
+
+          prediction = json.loads(Path("prediction.json").read_text())
+          assert len(prediction) == 1
+          result = prediction[0]
+          assert set(result) == {"prediction", "confidence"}
+          assert type(result["prediction"]) is int and result["prediction"] in (0, 1)
+          assert type(result["confidence"]) is float and 0.5 <= result["confidence"] <= 1
+          metadata = json.loads(Path("models/heart_pipeline.json").read_text())
+          assert metadata["author"] == "2025ae05142"
+          assert metadata["artifact_sha256"] == hashlib.sha256(
+              Path("models/heart_pipeline.joblib").read_bytes()
+          ).hexdigest()
+          assert metadata["dataset_sha256"] == hashlib.sha256(
+              Path("data/processed/heart.csv").read_bytes()
+          ).hexdigest()
+          client = MlflowClient(tracking_uri=TRACKING_URI, registry_uri=TRACKING_URI)
+          experiment = client.get_experiment_by_name(EXPERIMENT_NAME)
+          assert experiment is not None
+          runs = client.search_runs([experiment.experiment_id])
+          assert len(runs) == 3
+          assert {run.data.tags["model"] for run in runs} == {
+              "logistic_regression", "random_forest", "rbf_svc"
+          }
+          for run in runs:
+              assert run.info.status == "FINISHED"
+              assert run.data.tags["author"] == "2025ae05142"
+              assert run.data.tags["confidence_status"] == "uncalibrated"
+              assert run.data.tags["dataset_sha256"] == metadata["dataset_sha256"]
+              for metric in METRICS:
+                  assert 0 <= run.data.metrics[f"{metric}_mean"] <= 1
+                  assert run.data.metrics[f"{metric}_std"] >= 0
+          version = client.get_model_version(REGISTERED_MODEL_NAME, "1")
+          assert version.status == "READY"
+          champion = next(run for run in runs if run.data.tags["champion"] == "true")
+          assert version.run_id == champion.info.run_id
+          mlflow.set_tracking_uri(TRACKING_URI)
+          mlflow.set_registry_uri(TRACKING_URI)
+          registry_pipeline = mlflow.sklearn.load_model(
+              f"models:/{REGISTERED_MODEL_NAME}/1"
+          )
+          data = pd.read_csv("data/processed/heart.csv")
+          assert registry_pipeline.predict(
+              data[NUMERIC_FEATURES + CATEGORICAL_FEATURES]
+          ).shape == (len(data),)
+          print("Author: 2025ae05142 Verified packaged artifact and sample prediction", prediction)
+          print("Author: 2025ae05142 Verified three MLflow runs and registry reload")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: training-evidence-2025ae05142
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            reports/
+            models/
+            mlflow.db
+            mlruns/
+            prediction.json

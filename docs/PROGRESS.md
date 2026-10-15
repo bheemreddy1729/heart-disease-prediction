@@ -11,7 +11,7 @@ Complete one phase at a time. A phase is complete only when its gate is met; rec
 | 2 — Features and models | pass | `python3 src/train/train.py` completed reproducibly; all three leakage-safe candidate pipelines were evaluated with five-fold stratified CV and all four metrics, and `reports/model_comparison.md` records the comparison and champion rule. |
 | 3 — Experiment tracking | pass | Three FINISHED local MLflow runs with required parameters, metrics, author tags, fitted pipelines, and EDA artifacts; champion registry version 1 is READY. Reloaded all three pipelines and verified predictions on 303 rows. |
 | 4 — Packaging and reproducibility | pass | Fresh isolated `.venv-phase4` installed pinned requirements, regenerated data/EDA, trained, packaged the full calibrated pipeline, and produced the sample JSON below. Repackaging reproduced artifact/report hashes. |
-| 5 — Tests and CI | not started | Local lint/tests pass; workflow contains lint, test, and train jobs. |
+| 5 — Tests and CI | local gate pass; hosted run pending | Ruff and 51 pytest cases pass; workflow defines lint, test, and dependent train jobs. All shell/Python job commands passed in an isolated checkout. Publishing and hosted execution await explicit authorization. |
 | 6 — Container | not started | Docker build/run and `/predict` smoke test succeed; request/response are recorded. |
 | 7 — Kubernetes | not started | Minikube pod runs and the sample succeeds through the Service; command output and response are recorded. |
 | 8 — Monitoring and logging | not started | A prediction creates a JSON log line and increments Prometheus request metrics. |
@@ -232,4 +232,71 @@ Author: `2025ae05142`
 - Saved and visually checked the [packaging and inference screenshot](../screenshots/phase-4-packaging-inference.png). It shows the author tag, VM username, Python version, commands, packaging output, nested OOF metrics, and JSON prediction. Captured only the evidence terminal, not unrelated desktop windows.
 - This reran local calibrated packaging, not MLflow training or registration. Closed the temporary capture terminal afterward. Phase 5 remains not started.
 
-**Next:** Review Phase 4, then send `start phase 5`.
+## Phase 5 evidence
+
+Author: `2025ae05142`
+
+### Implementation and local gate
+
+- Probed the VM before installation: user `s2025ae05142`, HOME `/home/s2025ae05142`, Python 3.12.9. Neither pytest nor ruff was installed in `.venv-phase4`. Added `requirements-dev.txt` including the runtime manifest and pinned `pytest==8.4.2` and `ruff==0.14.0`, then installed into that isolated environment; no system installation.
+- Added correctness-focused ruff and pytest configuration in `pyproject.toml`; excluded their runtime caches from git.
+- Added 51 tests covering source schema/class counts/missingness, target binarization and invalid values, preparation round-trip, downloader validation/attribution with local response fixtures, real three-candidate evaluation, sample standard deviations, champion priorities/ties, fitted preprocessing isolation and unknown categories, invalid training data, real calibration packaging/provenance/hashes, and inference success/error/threshold/CLI behavior.
+- Successful tests build their own real calibrated model in pytest temporary directories. They never rely on the ignored serving artifact or existing MLflow state, do not download data, and do not write the repository's reports or models.
+
+Exact local validation commands:
+
+```sh
+.venv-phase4/bin/python -m pip install -r requirements-dev.txt
+.venv-phase4/bin/python -m pip check
+.venv-phase4/bin/python -m ruff check .
+.venv-phase4/bin/python -m pytest -q
+```
+
+Results: `No broken requirements found.`, `All checks passed!`, and **51 passed in 15.08s**. The initial lint check caught one unused import in a new test fixture; removed it and reran successfully. The editor test runner reported `No tests found in the files`, so the authoritative run used the pinned environment's pytest CLI. Editor diagnostics for the workflow/configuration were clear.
+
+### Isolated CI-command reproduction
+
+- Added `.github/workflows/ci.yml` with Python 3.12 `lint`, `test`, and `train` jobs. Train requires both checks; all jobs have timeouts and read-only repository permissions. The train job uses the committed UCI raw snapshot (avoiding a live-source outage), regenerates processed data/EDA, logs actual MLflow runs, packages calibration, verifies JSON/provenance and registry reload, and uploads seven-day evidence. No deployment or commit/push step.
+- Parsed the workflow with the existing PyYAML dependency using `BaseLoader` (preserving the `on` key), checked triggers/job dependencies, and compiled its embedded verification Python. This is a local structure check, not a hosted Actions run or complete Actions-service validation.
+- Ran the following verification driver on the VM:
+
+```sh
+.venv-phase4/bin/python -u /home/s2025ae05142/.copilot/session-state/efa990de-681a-4eca-b022-e37b78971d1e/files/verify_phase5.py
+```
+
+The driver used `git archive HEAD` extracted into an isolated temporary checkout, overlaid only the new Phase 5 tests/manifests/workflow and cache exclusions, and asserted that `models/`, `mlflow.db`, and `mlruns/` were absent. It reused the pinned `.venv-phase4` interpreter (this is not a second fresh dependency installation), then executed the workflow's actual `run` blocks in job order, except dependency-install blocks already satisfied by that environment.
+
+The train job's exact reproduction commands were:
+
+```sh
+python src/data/prepare.py
+python src/eda/explore.py
+python src/train/train.py
+python -m src.train.package
+python -m src.infer.predict --input examples/patient.json > prediction.json
+```
+
+Results in the isolated checkout:
+
+- Ruff: `All checks passed!`; pytest: **51 passed in 15.78s**.
+- Regenerated processed data and EDA; selected `rbf_svc` with unchanged CV metrics.
+- Created three FINISHED runs in a fresh local SQLite store: Logistic Regression `490c66492c584167a8a182383d551467`, Random Forest `b67aa6232b774efab7b304a0aa1731c7`, RBF SVC `ff0581f3caa0433fad66bdb48d57f3df`. Registered uncalibrated champion version 1 in this separate store, not the main checkout's registry.
+- Workflow assertions verified all three run author/confidence/data-hash tags and four metrics/stds, READY registry version linked to the champion, and full registered pipeline reload/prediction for all 303 rows.
+- Packaging and sample CLI succeeded; JSON was `[{"prediction": 0, "confidence": 0.7466949562461239}]`. Workflow assertions verified exact prediction keys/types/ranges and provenance hashes. Main-checkout models, reports, and MLflow history were not overwritten by this reproduction.
+- The driver and captured transcript are retained in session evidence; the isolated scratch checkout is removed after validation. These commands validate job behavior locally, not runner provisioning, dependency installation on GitHub, action execution, or artifact upload.
+
+### Hosted CI status and phase boundary
+
+- GitHub Actions API `list_workflows` for `bheemreddy1729/heart-disease-prediction` returned `{"total_count": 0}` before publication. Actions is reachable, but there is no published workflow or hosted green run to inspect yet. No claim of hosted CI success or artifact upload is made.
+- Local Phase 5 gate is met. Hosted evidence remains pending explicit student authorization to publish and run the workflow. No commit, push, dispatch, serving API, Docker phase, or deployment was performed.
+
+**Next:** Review Phase 5 and authorize workflow publication/execution when ready. Stop before Phase 6.
+
+### Phase 5 screenshot capture and publication attempt
+
+Author: `2025ae05142`
+
+- Student explicitly authorized committing/pushing Phase 5 and running CI to capture all three screenshots.
+- Captured and visually checked [local validation](../screenshots/phase-5-local-validation.png) from an actual VM terminal: Python 3.12.9, `pip check` successful, ruff successful, and **51 passed in 16.72s**. Cropped unrelated desktop chrome; no output was recreated.
+- Created local commit `9988eba` containing Phase 5 implementation and the local screenshot. Initial `git push origin main` failed with `fatal: could not read Username for 'https://github.com': terminal prompts disabled`. Configured the existing authenticated GitHub CLI credential helper using `gh auth setup-git` and retried.
+- The authenticated `git push origin main` was rejected: `refusing to allow an OAuth App to create or update workflow .github/workflows/ci.yml without workflow scope`. No remote changes or hosted workflow run occurred. Hosted run/training-evidence screenshots remain blocked until the student grants workflow scope or publishes this commit through an appropriately authorized client. Stopped publication attempts rather than bypassing the permission restriction.

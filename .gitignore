@@ -5,3 +5,5 @@ mlflow.db-*
 mlruns/
 .venv*/
 models/
+.pytest_cache/
+.ruff_cache/

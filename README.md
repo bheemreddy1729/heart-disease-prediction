@@ -74,9 +74,42 @@ The pipeline is loaded from `models/heart_pipeline.joblib`, relative to the
 repository rather than the shell working directory. **Only load trusted locally
 generated joblib/MLflow pickle artifacts**: deserialization can execute code.
 
+## Tests and CI
+
+Install development tools into the same isolated environment, then run:
+
+```sh
+.venv-phase4/bin/python -m pip install -r requirements-dev.txt
+.venv-phase4/bin/python -m pip check
+.venv-phase4/bin/python -m ruff check .
+.venv-phase4/bin/python -m pytest -q
+```
+
+The tests regenerate prepared data from the committed UCI raw snapshot and build
+their own calibrated model in temporary directories. They do not require existing
+models, MLflow state, or network access, and do not overwrite project artifacts.
+They cover data/target validation, fold-local preprocessing, CV metrics and
+champion selection, calibration packaging/provenance, and inference contracts
+including the exact 0.5 tie and attributed CLI errors.
+
+[GitHub Actions](.github/workflows/ci.yml) defines separate `lint`, `test`, and
+`train` jobs for pushes, pull requests, and manual dispatch. Training waits for
+both checks, regenerates processed data and EDA from the committed raw snapshot,
+logs three candidates to a fresh local MLflow store, packages the separate
+calibrated serving model, and verifies inference and registry reload. It uploads
+reports, models, MLflow state, and sample JSON as the seven-day
+`training-evidence-2025ae05142` artifact. MLflow paths inside this evidence point
+to the original runner; regenerate locally rather than assuming the downloaded
+store is portable. Treat serialized models as trusted-code artifacts, not safe
+arbitrary uploads.
+
+Local workflow-command reproduction is recorded in [progress](docs/PROGRESS.md).
+A hosted green run is not claimed until this workflow is published and executed;
+publication/dispatch requires the student's explicit authorization.
+
 ## Phase boundaries
 
 See [progress and verification evidence](docs/PROGRESS.md),
 [design decisions](docs/DECISIONS.md), and [data provenance](docs/DATA.md).
-Automated tests/CI, the serving API, Docker, Kubernetes, and monitoring belong to
-later phases and are not claimed complete here.
+The serving API, Docker, Kubernetes, and monitoring belong to later phases and
+are not claimed complete here.
