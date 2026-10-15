@@ -10,7 +10,7 @@ Complete one phase at a time. A phase is complete only when its gate is met; rec
 | 1 — Data and EDA | pass | UCI download, preparation, and EDA commands succeeded; 303 rows, target counts 164/139, 6 reported missing feature values, summary, and all three figures verified below. |
 | 2 — Features and models | pass | `python3 src/train/train.py` completed reproducibly; all three leakage-safe candidate pipelines were evaluated with five-fold stratified CV and all four metrics, and `reports/model_comparison.md` records the comparison and champion rule. |
 | 3 — Experiment tracking | pass | Three FINISHED local MLflow runs with required parameters, metrics, author tags, fitted pipelines, and EDA artifacts; champion registry version 1 is READY. Reloaded all three pipelines and verified predictions on 303 rows. |
-| 4 — Packaging and reproducibility | not started | A fresh virtual environment can install, train, and run inference on a sample. |
+| 4 — Packaging and reproducibility | pass | Fresh isolated `.venv-phase4` installed pinned requirements, regenerated data/EDA, trained, packaged the full calibrated pipeline, and produced the sample JSON below. Repackaging reproduced artifact/report hashes. |
 | 5 — Tests and CI | not started | Local lint/tests pass; workflow contains lint, test, and train jobs. |
 | 6 — Container | not started | Docker build/run and `/predict` smoke test succeed; request/response are recorded. |
 | 7 — Kubernetes | not started | Minikube pod runs and the sample succeeds through the Service; command output and response are recorded. |
@@ -136,4 +136,85 @@ Author: 2025ae05142 registry 1 READY b31ee47545d04752a9bd7f9b9f7b1b9c
 
 The Phase 3 champion remains the uncalibrated Phase 2 pipeline. Probability calibration and confidence validation are documented plans for Phase 4, not completed work. No serving, packaging, commit, or push was performed.
 
-**Next:** Review Phase 3, then send `start phase 4`.
+### Phase 3 UI screenshots
+
+Author: `2025ae05142`
+
+At the student's explicit request, captured and visually checked the live MLflow UI on the VM using its installed Firefox 128 ESR in headless mode. The integrated browser's forwarded port required GitHub sign-in, so screenshots were taken directly from localhost instead; no public port access was enabled and no extra browser packages were installed.
+
+Started the temporary UI with:
+
+```sh
+MLFLOW_DISABLE_TELEMETRY=true MLFLOW_DISABLE_AGENT_HINT=true python3 -m mlflow server --backend-store-uri sqlite:////home/s2025ae05142/workspace/Assignment-I/heart-disease-prediction/mlflow.db --default-artifact-root file:///home/s2025ae05142/workspace/Assignment-I/heart-disease-prediction/mlruns --host 127.0.0.1 --port 5000 --workers 1
+```
+
+`curl --fail http://127.0.0.1:5000/health` returned `OK`. Captured rendered UI screenshots at 2200 x 1100 after confirming the expected content had loaded:
+
+- [Experiment runs](../screenshots/phase-3-mlflow-experiment.png): three successful runs, two retained failures, four mean metrics, and author tags.
+- [Champion run](../screenshots/phase-3-mlflow-champion-run.png): metrics, preprocessing parameters, FINISHED status, run ID, champion/author tags, and registry link.
+- [Logged EDA artifacts](../screenshots/phase-3-mlflow-artifacts.png): the three EDA figure files with the logged class-balance image preview.
+- [Registered champion](../screenshots/phase-3-mlflow-registry.png): version 1, source run/model, author tag, uncalibrated status, and input/output schema.
+
+These are actual MLflow UI captures, not recreated charts or mockups. No training, new experiment runs, or new registry versions were needed. Stopped the temporary UI and isolated Firefox processes after capture. Phase 4 remains not started.
+
+## Phase 4 evidence
+
+Author: `2025ae05142`
+
+Execution location: Prayogshala Linux VM, user `s2025ae05142`, repository `/home/s2025ae05142/workspace/Assignment-I/heart-disease-prediction`, Python 3.12.9.
+
+### Fresh-environment gate
+
+Probed available dependencies, disk, and memory before installation. `.venv-phase4` did not exist; created it without system-site-packages. Verified `sys.prefix != sys.base_prefix`, `include-system-site-packages = false`, and no user-site `.local` packages on `sys.path`. The install completed successfully (slow package writes on the workspace filesystem); `pip check` returned `No broken requirements found.` No validation commands failed in this phase.
+
+Ran the exact reproduction sequence from the repository root:
+
+```sh
+python3 -m venv .venv-phase4
+.venv-phase4/bin/python -m pip install -r requirements.txt
+.venv-phase4/bin/python -m pip check
+.venv-phase4/bin/python src/data/download_heart.py
+.venv-phase4/bin/python src/data/prepare.py
+.venv-phase4/bin/python src/eda/explore.py
+.venv-phase4/bin/python src/train/train.py
+.venv-phase4/bin/python -m src.train.package
+.venv-phase4/bin/python -m src.infer.predict --input examples/patient.json
+```
+
+The final command returned:
+
+```json
+[{"prediction": 0, "confidence": 0.7466949562461239}]
+```
+
+This is the probability of the returned absent-disease class for the documented sample, not an independent test or clinical assurance. Labels use maximum calibrated class probability and can differ from the original SVC's label decision.
+
+### Packaged artifact and evaluation
+
+- `src/train/package.py` recomputes the established three-candidate CV comparison and champion rule, selecting `rbf_svc`. It evaluates a sigmoid calibrator around the entire preprocessing/classifier pipeline using five outer stratified validation folds and five inner calibration folds, shuffle and seed 42, with `ensemble=True`.
+- Only after out-of-fold evaluation, fit the final pipeline on all 303 rows and write `models/heart_pipeline.joblib` plus `models/heart_pipeline.json` provenance. Each of its five fitted calibration estimators contains the full imputation/scaling/encoding/classifier pipeline. The binary and virtual environment are gitignored but exist persistently on this VM.
+- `reports/calibration_summary.md` and `reports/figures/calibration_reliability.png` record separate pooled out-of-fold metrics and visually inspected reliability/bin-count diagnostics:
+
+  | Metric | Value |
+  |---|---:|
+  | Accuracy | 0.854785 |
+  | Precision | 0.851852 |
+  | Recall | 0.827338 |
+  | ROC-AUC | 0.905115 |
+  | Brier score | 0.121745 |
+  | Log loss | 0.392889 |
+  | Training-fold prevalence baseline Brier score | 0.248313 |
+
+- These are post-selection diagnostics: the candidate was selected using this same dataset. No claim of unbiased final-test performance, clinical suitability, or perfect calibration is made. The original Phase 2 comparison remains unchanged.
+- Re-ran `.venv-phase4/bin/python -m src.train.package`; SHA-256 comparison confirmed the model binary and calibration summary were byte-for-byte identical. Sample JSON was identical on repeated prediction and after repackaging. Artifact SHA-256: `e9e7aee665648300c2eac5a917cca89a2c401f9c32a881a65e5c20df99d0fc4c`.
+- Fresh-environment candidate training appended successful MLflow runs `e31403f4bb7d4506b39ceb1ff05004c4` (Logistic Regression), `278a020c22ae4530aabafb6bd5fc1307` (Random Forest), and `5ad5e00bd4714b998beb1b868379a2b2` (RBF SVC). The uncalibrated registry champion now also has version 2; version 1 and the Phase 3 screenshots remain historical evidence. The regenerated MLflow summary lists the latest batch. The calibrated local serving artifact is deliberately separate and has not been registered under the uncalibrated model's metrics.
+
+### Inference and validation
+
+- Added `src/infer/predict.py` with `predict_records(records)`, returning only `prediction` and `confidence` keys. Loads the trusted local full pipeline, never refits or accesses MLflow. README includes exact setup, data, training, packaging, and sample-inference commands plus trust and statistical limitations.
+- Live assertions in the fresh environment verified deterministic single/batch predictions, null-value imputation, nine invalid-input cases (empty/wrong container, non-record, extra/missing keys, string, boolean, NaN, infinity), missing-artifact errors, rejection of non-pipeline artifacts and malformed probabilities, provenance hashes, five complete fitted inner pipelines, and JSON output shape/range.
+- Subprocess checks verified successful stdout is parseable JSON, and invalid CLI input exits 1 with no success output and `Author: 2025ae05142 Inference failed:` on stderr.
+- `git diff --exit-code -- reports/model_comparison.md` confirmed original model-comparison evidence is unchanged. `git check-ignore .venv-phase4/ models/heart_pipeline.joblib` confirmed runtime exclusions. Editor diagnostics and `git diff --check` passed.
+- No CI/tests infrastructure, serving API, containers, or deployment was started; no commit or push was made. Existing Phase 3 screenshot changes were preserved.
+
+**Next:** Review Phase 4, then send `start phase 5`.

@@ -8,13 +8,13 @@
 
 | Model | Run ID | Model URI |
 |---|---|---|
-| logistic_regression | `36f54d74d4604552aaeec49ca8e4dd5c` | `models:/m-3286e58d035343758e4f88254a6ae92c` |
-| random_forest | `f1fd9806c995443db667aee24e95dd87` | `models:/m-1255fc7c3069418892c1b4d88ef4d9bc` |
-| rbf_svc | `b31ee47545d04752a9bd7f9b9f7b1b9c` | `models:/m-966e916d44dc4c95af24d96d059042d1` |
+| logistic_regression | `e31403f4bb7d4506b39ceb1ff05004c4` | `models:/m-b5fd21e8ba934af496d60383792f11d2` |
+| random_forest | `278a020c22ae4530aabafb6bd5fc1307` | `models:/m-01a5af4d0b6c48ce82d5cea6cbb03c72` |
+| rbf_svc | `5ad5e00bd4714b998beb1b868379a2b2` | `models:/m-bfd6e6c8994c44298d525deb69be3746` |
 
-- Champion: `rbf_svc`; run ID: `b31ee47545d04752a9bd7f9b9f7b1b9c`.
-- Registered model: `heart-disease-champion-2025ae05142`, version `1`.
-- Registry URI: `models:/heart-disease-champion-2025ae05142/1`
+- Champion: `rbf_svc`; run ID: `5ad5e00bd4714b998beb1b868379a2b2`.
+- Registered model: `heart-disease-champion-2025ae05142`, version `2`.
+- Registry URI: `models:/heart-disease-champion-2025ae05142/2`
 - Each run contains parameters, all four CV metrics and standard deviations, the complete fitted sklearn pipeline, three EDA figures, and the comparison report.
 - The champion is not calibrated and does not expose confidence probabilities. The confidence plan in docs/DECISIONS.md must be implemented and evaluated before packaging a confidence-bearing inference artifact in Phase 4.
 
