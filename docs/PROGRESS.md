@@ -224,4 +224,12 @@ This is the probability of the returned absent-disease class for the documented 
 - On the VM, used `.venv-phase4/bin/python -B` assertions against the actual `predict_records` function with mocked probabilities 0.49, 0.50, and 0.51; verified predictions 0, 0, and 1, with the corresponding predicted-class confidence. Extracted the actual generator text with Python AST and confirmed it matches both saved reports. `git diff --check` passed.
 - These are documentation/output-text corrections only; no retraining, repackaging, new MLflow runs, or registry versions were needed. Existing sample results and artifact hashes are unchanged; Phase 5 remains not started.
 
+### Phase 4 screenshot evidence
+
+Author: `2025ae05142`
+
+- At the student's request, reran `.venv-phase4/bin/python -m src.train.package` and `.venv-phase4/bin/python -m src.infer.predict --input examples/patient.json` in an actual VM terminal. Both exited successfully; the sample again returned `[{"prediction": 0, "confidence": 0.7466949562461239}]`.
+- Saved and visually checked the [packaging and inference screenshot](../screenshots/phase-4-packaging-inference.png). It shows the author tag, VM username, Python version, commands, packaging output, nested OOF metrics, and JSON prediction. Captured only the evidence terminal, not unrelated desktop windows.
+- This reran local calibrated packaging, not MLflow training or registration. Closed the temporary capture terminal afterward. Phase 5 remains not started.
+
 **Next:** Review Phase 4, then send `start phase 5`.
