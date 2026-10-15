@@ -11,7 +11,7 @@ Complete one phase at a time. A phase is complete only when its gate is met; rec
 | 2 — Features and models | pass | `python3 src/train/train.py` completed reproducibly; all three leakage-safe candidate pipelines were evaluated with five-fold stratified CV and all four metrics, and `reports/model_comparison.md` records the comparison and champion rule. |
 | 3 — Experiment tracking | pass | Three FINISHED local MLflow runs with required parameters, metrics, author tags, fitted pipelines, and EDA artifacts; champion registry version 1 is READY. Reloaded all three pipelines and verified predictions on 303 rows. |
 | 4 — Packaging and reproducibility | pass | Fresh isolated `.venv-phase4` installed pinned requirements, regenerated data/EDA, trained, packaged the full calibrated pipeline, and produced the sample JSON below. Repackaging reproduced artifact/report hashes. |
-| 5 — Tests and CI | pass | Ruff and 51 pytest cases pass locally; hosted run `38787031961` for commit `7589a63` passed lint, test, and train, verified registry reload/inference, and uploaded training evidence. All three screenshots saved. |
+| 5 — Tests and CI | pass | Ruff and 51 pytest cases pass locally; hosted run `38787031961` passed lint, test, and train with uploaded evidence. Dedicated branch run `38789263010` failed on an intentional test; reverting that commit restored green CI in run `38789471935`. Screenshots and run links recorded below. |
 | 6 — Container | not started | Docker build/run and `/predict` smoke test succeed; request/response are recorded. |
 | 7 — Kubernetes | not started | Minikube pod runs and the sample succeeds through the Service; command output and response are recorded. |
 | 8 — Monitoring and logging | not started | A prediction creates a JSON log line and increments Prometheus request metrics. |
@@ -310,3 +310,18 @@ Author: `2025ae05142`
 - Saved and visually checked actual GitHub UI captures: [green hosted run](../screenshots/phase-5-actions-run.png) and [uploaded training evidence](../screenshots/phase-5-training-evidence.png). Together with [local validation](../screenshots/phase-5-local-validation.png), all three requested Phase 5 screenshots now exist. No mocked or recreated CI UI was used.
 - GitHub displayed non-failing Node.js action-runtime deprecation warnings and an upcoming `ubuntu-latest` migration notice. These did not prevent any job or artifact upload from succeeding.
 - Closed the temporary isolated Firefox capture process. Phase 5's hosted gate is now met; the earlier pending/permission entries above are historical. No Phase 6 work was started.
+
+### Phase 5 review correction: deliberate failure followed by revert
+
+Author: `2025ae05142`
+
+The reviewer correctly identified that successful runs alone did not demonstrate CI catching a deliberately failing test. The earlier completion statement omitted this requirement; the demonstration below now supplies it.
+
+- With explicit student authorization, created branch `phase5/failed-test-demo` in an isolated worktree from main commit `c87fdbb`. Main's branch pointer and application/test code were left unchanged; the intentional failure was never merged.
+- Committed `b9a445cae417a588b1c1a1824d1ae0831f0fb236`, adding only `tests/test_ci_failure_demo.py` with `test_intentional_ci_failure_2025ae05142` and an unconditional assertion carrying author attribution.
+- Pushed that branch and waited for actual [failed run 38789263010](https://github.com/bheemreddy1729/heart-disease-prediction/actions/runs/38789263010). Lint passed, test failed, and dependent training was skipped. Retrieved `gh run view 38789263010 --log-failed` and verified the cause was the deliberate assertion, not infrastructure: **1 failed, 51 passed in 7.47s**, with `AssertionError: Author: 2025ae05142 Deliberate CI failure; revert this demo commit.`
+- Only after confirming that failure, ran `git revert --no-edit b9a445cae417a588b1c1a1824d1ae0831f0fb236`, creating revert commit `3b17b0cc4a0a5670b13003e7b8c67b76376d44c9`, and pushed the same branch again. No force push or history rewrite.
+- Verified `git diff --exit-code c87fdbb HEAD` in the demo worktree: no differences after the revert. The failing test no longer exists at the branch tip.
+- Actual [recovered run 38789471935](https://github.com/bheemreddy1729/heart-disease-prediction/actions/runs/38789471935) passed lint, test, and train, with **51 passed in 8.88s** and an uploaded training artifact. Total duration: 2m 36s.
+- Saved and visually checked actual GitHub UI screenshots: [deliberately failed CI](../screenshots/phase-5-deliberate-failure.png) and [green CI after revert](../screenshots/phase-5-reverted-success.png). These show the same demo branch and the distinct failure/revert commits.
+- Retained the remote demo branch and both commits/runs as reviewable evidence; removed only its temporary local worktree and stopped its temporary Firefox process. This progress update and screenshots are saved locally for review; no new commit to main was made. Phase 6 remains not started.
