@@ -7,7 +7,7 @@ Complete one phase at a time. A phase is complete only when its gate is met; rec
 | Phase | Status | Gate / evidence |
 |---|---|---|
 | 0 — Lab baseline | pass | `docs/ENVIRONMENT.md` records the Linux VM baseline. Python 3.12.9 satisfies the >=3.10 gate; Docker and Minikube are installed. GitHub Actions API access returned HTTP 200; workflow execution remains unverified until Phase 5. |
-| 1 — Data and EDA | not started | UCI download and EDA scripts run from a clean checkout; processed data, summary, and three figures exist. |
+| 1 — Data and EDA | pass | UCI download, preparation, and EDA commands succeeded; 303 rows, target counts 164/139, 6 reported missing feature values, summary, and all three figures verified below. |
 | 2 — Features and models | not started | Cross-validated comparison and report include accuracy, precision, recall, and ROC-AUC for each model. |
 | 3 — Experiment tracking | not started | Local MLflow has one run per model, required artifacts/tags, and a registered champion. |
 | 4 — Packaging and reproducibility | not started | A fresh virtual environment can install, train, and run inference on a sample. |
@@ -35,4 +35,14 @@ Complete one phase at a time. A phase is complete only when its gate is met; rec
 - Clarified that GitHub Actions endpoint access is not workflow execution evidence.
 - Reviewed the committed VM evidence remotely; no VM commands were rerun during this documentation review.
 
-**Next:** Review these corrections, then send `phase 1` in the VM window when ready.
+## Phase 1 evidence
+
+- Installed only the pinned Phase 1 dependencies from `requirements.txt` into the current user environment with `python3 -m pip install --user -r requirements.txt`.
+- `python3 src/data/download_heart.py` succeeded and saved the UCI processed Cleveland source to `data/raw/processed.cleveland.data`; `data/raw/README.md` records the source and local download date.
+- `python3 src/data/prepare.py` succeeded and wrote `data/processed/heart.csv`.
+- `python3 src/eda/explore.py` succeeded and wrote `reports/eda_summary.md`, `reports/figures/feature_histograms.png`, `reports/figures/correlation_heatmap.png`, and `reports/figures/class_balance.png`.
+- Verified source-aligned row count (303), 13 feature columns, target mapping (`0`: 164; `1`: 139), and preservation/reporting of six missing cells (`ca`: 4; `thal`: 2). All three PNGs are non-empty valid PNG files; the summary contains author attribution, missingness, and class counts.
+- `python3 -m compileall -q src` and `git diff --check` succeeded.
+- Missing feature values are retained in the processed file, not dropped or imputed; missing values are omitted per feature in histograms and pairwise in correlations. The decision and rationale are recorded in `docs/DECISIONS.md`.
+
+**Next:** Review Phase 1 evidence, then send `start phase 2`.

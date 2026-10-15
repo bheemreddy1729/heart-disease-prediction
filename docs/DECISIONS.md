@@ -14,3 +14,10 @@ Decisions are recorded as each phase reaches its design gate. Do not substitute 
 - **Run attribution:** Tag each MLflow run, log line, and report header with `2025ae05142`.
 - **Cluster and CI:** Target local Minikube on the assigned VM to keep deployment reproducible without requiring a public-cloud account. The repository's Actions API is reachable, but workflow execution remains unverified until Phase 5; do not push or trigger a workflow unless explicitly requested.
 - **Deferred decisions:** EDA missing-value display/handling, the third classifier, the random seed, champion selection rule, and serving/deployment details will be decided and justified in their relevant phases.
+
+## Phase 1
+
+- **EDA missingness:** Preserve source `?` values as missing in the processed table, report missing counts, and do not drop rows or impute during EDA. This keeps all 303 records available and avoids fitting imputation statistics before the training split. Histograms omit missing values within each feature; the correlation matrix uses pairwise complete observations. Fit any later imputer only on training data as part of the model pipeline.
+- **Target:** Map original Cleveland `num=0` to absence (`0`) and `num=1,2,3,4` to presence (`1`); reject target values outside this defined domain.
+- **EDA scope:** Plot histograms for the 13 numeric clinical features (not the outcome), use Pearson correlations across those features, and show class counts after binarization.
+- **Reproducibility:** Download the processed Cleveland file from the UCI URL documented in `docs/DATA.md`; retain its local raw copy and record its download date. Pin only the pandas and matplotlib dependencies needed by this phase; extend the manifest when later phases need their dependencies.
