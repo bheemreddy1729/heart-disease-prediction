@@ -217,4 +217,11 @@ This is the probability of the returned absent-disease class for the documented 
 - `git diff --exit-code -- reports/model_comparison.md` confirmed original model-comparison evidence is unchanged. `git check-ignore .venv-phase4/ models/heart_pipeline.joblib` confirmed runtime exclusions. Editor diagnostics and `git diff --check` passed.
 - No CI/tests infrastructure, serving API, containers, or deployment was started; no commit or push was made. Existing Phase 3 screenshot changes were preserved.
 
+### Phase 4 documentation review follow-ups
+
+- Documented the existing inference threshold in README, decisions, and the calibration report/generator: predict 1 when P(disease) > 0.5; otherwise 0. Exact ties return class 0 with confidence 0.5 because argmax selects the first class in `[0, 1]`.
+- Updated the MLflow summary generator and existing summary to distinguish the uncalibrated registry candidate from the separate calibrated serving-artifact workflow. Training does not run packaging or verify its outputs; the text makes no claim that packaging has executed or that an existing artifact matches a new training run.
+- On the VM, used `.venv-phase4/bin/python -B` assertions against the actual `predict_records` function with mocked probabilities 0.49, 0.50, and 0.51; verified predictions 0, 0, and 1, with the corresponding predicted-class confidence. Extracted the actual generator text with Python AST and confirmed it matches both saved reports. `git diff --check` passed.
+- These are documentation/output-text corrections only; no retraining, repackaging, new MLflow runs, or registry versions were needed. Existing sample results and artifact hashes are unchanged; Phase 5 remains not started.
+
 **Next:** Review Phase 4, then send `start phase 5`.

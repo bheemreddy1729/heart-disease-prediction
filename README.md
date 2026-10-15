@@ -29,6 +29,11 @@ The final command emits only a JSON list on stdout, with integer `prediction`
 class, between 0 and 1). The sample is a feature-only dataset record, not an
 independent test case. Actual verified output is recorded in [progress](docs/PROGRESS.md).
 
+The decision rule is **predict 1 when P(disease) > 0.5; otherwise predict 0**.
+An exact tie, P(disease) = 0.5, returns class 0 with confidence 0.5:
+`argmax` selects the first class in the validated class order `[0, 1]`.
+This fixed threshold is not a clinically optimized decision threshold.
+
 Training appends three local MLflow runs and a new uncalibrated champion registry
 version each time. It writes [the comparison](reports/model_comparison.md) and
 [MLflow summary](reports/mlflow_summary.md). SQLite `mlflow.db` and artifact

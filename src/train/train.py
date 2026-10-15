@@ -333,9 +333,14 @@ def track_models(
         f"- Registry URI: `models:/{REGISTERED_MODEL_NAME}/{version.version}`",
         "- Each run contains parameters, all four CV metrics and standard deviations, "
         "the complete fitted sklearn pipeline, three EDA figures, and the comparison report.",
-        "- The champion is not calibrated and does not expose confidence probabilities. "
-        "The confidence plan in docs/DECISIONS.md must be implemented and evaluated "
-        "before packaging a confidence-bearing inference artifact in Phase 4.",
+        "- The registered champion is the uncalibrated candidate pipeline, not the "
+        "calibrated serving artifact; its CV metrics describe that uncalibrated model.",
+        "- Separate serving-artifact workflow: `python -m src.train.package` evaluates "
+        "and writes the calibrated pipeline to `models/heart_pipeline.joblib` with "
+        "provenance and `reports/calibration_summary.md`. This training command does "
+        "not run packaging or verify that those outputs exist or match this run. "
+        "Consult the packaging provenance and calibration report for its actual results; "
+        "packaging does not replace this registry version.",
         "",
         "Reproduce: `python3 src/train/train.py` from the repository root. "
         "Each execution appends runs and a new registry version; the summary records "

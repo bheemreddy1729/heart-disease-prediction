@@ -24,4 +24,5 @@ Brier score and log loss are lower-is-better. The baseline uses only each outer 
 - Artifact SHA-256: `e9e7aee665648300c2eac5a917cca89a2c401f9c32a881a65e5c20df99d0fc4c`.
 - Provenance: `models/heart_pipeline.json`; regenerate both with `python -m src.train.package`.
 - Inference returns the probability of the predicted class as confidence. It is not certainty, a diagnosis, or a decision threshold chosen for clinical use.
+- Decision rule: predict 1 when P(disease) > 0.5; otherwise predict 0. An exact tie at 0.5 returns class 0 with confidence 0.5 because argmax selects the first class in [0, 1].
 - The existing MLflow registered version remains the uncalibrated Phase 3 model; this separate local confidence artifact does not change its recorded metrics.
