@@ -10,6 +10,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[2]
 RAW_PATH = ROOT / "data" / "raw" / "processed.cleveland.data"
 PROCESSED_PATH = ROOT / "data" / "processed" / "heart.csv"
+AUTHOR = "2025ae05142"
 
 COLUMNS = [
     "age",
@@ -78,7 +79,7 @@ def main() -> None:
     )
     args = parser.parse_args()
     output_path = prepare_file(args.input, args.output)
-    print(f"Wrote {output_path}")
+    print(f"Wrote {output_path} (Author: {AUTHOR})")
 
 
 if __name__ == "__main__":

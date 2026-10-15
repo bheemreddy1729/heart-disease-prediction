@@ -114,7 +114,10 @@ def explore(data_path: Path = DATA_PATH) -> None:
     write_correlation_heatmap(data, FIGURES_PATH / "correlation_heatmap.png")
     write_class_balance(data, FIGURES_PATH / "class_balance.png")
     write_summary(data, SUMMARY_PATH)
-    print(f"Wrote EDA figures to {FIGURES_PATH} and summary to {SUMMARY_PATH}")
+    print(
+        f"Wrote EDA figures to {FIGURES_PATH} and summary to {SUMMARY_PATH} "
+        f"(Author: {AUTHOR})"
+    )
 
 
 if __name__ == "__main__":

@@ -38,11 +38,33 @@ Complete one phase at a time. A phase is complete only when its gate is met; rec
 ## Phase 1 evidence
 
 - Installed only the pinned Phase 1 dependencies from `requirements.txt` into the current user environment with `python3 -m pip install --user -r requirements.txt`.
-- `python3 src/data/download_heart.py` succeeded and saved the UCI processed Cleveland source to `data/raw/processed.cleveland.data`; `data/raw/README.md` records the source and local download date.
-- `python3 src/data/prepare.py` succeeded and wrote `data/processed/heart.csv`.
-- `python3 src/eda/explore.py` succeeded and wrote `reports/eda_summary.md`, `reports/figures/feature_histograms.png`, `reports/figures/correlation_heatmap.png`, and `reports/figures/class_balance.png`.
+- In the main VM checkout, `python3 src/data/download_heart.py`, `python3 src/data/prepare.py`, and `python3 src/eda/explore.py` succeeded and wrote the raw source, processed CSV, EDA summary, and three figures listed below.
 - Verified source-aligned row count (303), 13 feature columns, target mapping (`0`: 164; `1`: 139), and preservation/reporting of six missing cells (`ca`: 4; `thal`: 2). All three PNGs are non-empty valid PNG files; the summary contains author attribution, missingness, and class counts.
 - `python3 -m compileall -q src` and `git diff --check` succeeded.
 - Missing feature values are retained in the processed file, not dropped or imputed; missing values are omitted per feature in histograms and pairwise in correlations. The decision and rationale are recorded in `docs/DECISIONS.md`.
+- **Phase 1 review corrections:** Download, preparation, and EDA console status lines now each include `Author: 2025ae05142`; the downloader also writes that attribution into the generated `data/raw/README.md`.
+
+### Separate-checkout regeneration
+
+To avoid relying on the committed Phase 1 outputs, used a detached worktree at commit `7791642` at `/home/s2025ae05142/workspace/Assignment-I/heart-disease-phase1-repro`. Since the attribution corrections are uncommitted (and no commit was requested), copied the three corrected scripts from the main checkout into the detached worktree. Removed its raw and processed data, raw-data pointer, EDA summary, and three figures before running the following commands from that worktree:
+
+```sh
+cd /home/s2025ae05142/workspace/Assignment-I/heart-disease-phase1-repro
+python3 src/data/download_heart.py
+python3 src/data/prepare.py
+python3 src/eda/explore.py
+```
+
+Results, in command order:
+
+```text
+Downloaded /home/s2025ae05142/workspace/Assignment-I/heart-disease-phase1-repro/data/raw/processed.cleveland.data (Author: 2025ae05142)
+Wrote /home/s2025ae05142/workspace/Assignment-I/heart-disease-phase1-repro/data/processed/heart.csv (Author: 2025ae05142)
+Wrote EDA figures to /home/s2025ae05142/workspace/Assignment-I/heart-disease-phase1-repro/reports/figures and summary to /home/s2025ae05142/workspace/Assignment-I/heart-disease-phase1-repro/reports/eda_summary.md (Author: 2025ae05142)
+```
+
+Verified that this checkout regenerated all seven non-empty outputs (raw source, attributed raw-data README, processed table, attributed summary, and three figures) from the cleared state. The regenerated table has 303 rows, target counts 164/139, and six retained missing values (`ca`: 4; `thal`: 2).
+
+After regeneration, repeated the same three commands in the main checkout so its generated raw-data README uses the same attributed format. Compared SHA-256 hashes for all seven Phase 1 outputs between the main and detached checkouts; every file matched byte-for-byte. `git diff --check` and Python AST parsing of all three scripts passed.
 
 **Next:** Review Phase 1 evidence, then send `start phase 2`.
