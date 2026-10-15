@@ -100,6 +100,7 @@ Execution location: Prayogshala Linux VM, user `s2025ae05142`, repository `/home
 - Verified each FINISHED run's author/model/champion tags, data SHA-256, estimator/preprocessing parameters, CV seed and fold count, all four metric means and sample standard deviations, three EDA figures, comparison report, model signature, and fitted full pipeline. Reloaded every logged model and the registered champion through MLflow; predictions were valid binary labels for all 303 rows. Logged metrics match the generated Phase 2 comparison exactly.
 - `git diff --exit-code -- reports/model_comparison.md` passed: tracking did not alter Phase 2 CV results.
 - `git check-ignore mlflow.db mlflow.db-wal mlruns/` confirmed runtime storage is excluded. `git ls-files mlflow.db mlruns` returned no tracked runtime files. `git diff --check` passed and editor diagnostics found no Python errors.
+- **Phase 3 review correction:** The generated summary now interpolates `len(data)` rather than hardcoding 303 rows. On the VM, evaluated the actual summary expression extracted from the training module's AST with 17-row and 303-row inputs; both returned the correct row count. `git diff --check` passed. This targeted check did not retrain models or create new MLflow runs/registry versions; the existing 303-row summary remains accurate.
 
 ### Failures retained and resolved
 

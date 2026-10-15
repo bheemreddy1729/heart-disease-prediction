@@ -319,7 +319,7 @@ def track_models(
         f"- Artifact store: `{ARTIFACT_ROOT.as_uri()}`",
         f"- Dataset SHA-256: `{dataset_hash}`",
         "- Metrics are held-out CV means and sample standard deviations; "
-        "logged pipelines are subsequently fit on all 303 rows.",
+        f"logged pipelines are subsequently fit on all {len(data)} rows.",
         "",
         "| Model | Run ID | Model URI |",
         "|---|---|---|",
