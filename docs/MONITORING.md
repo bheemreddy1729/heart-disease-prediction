@@ -6,7 +6,7 @@ Author: `2025ae05142`
 
 Validated on the BITS Prayogshala Linux VM as `s2025ae05142`, in the
 `heart-disease` Minikube cluster. The instrumented API image is
-`heart-disease-2025ae05142:phase8`; Prometheus uses `prom/prometheus:v2.55.1`
+`heart-disease-2025ae05142:phase8-review`; Prometheus uses `prom/prometheus:v2.55.1`
 and Grafana uses `grafana/grafana:11.4.0`. The API remains available through
 the Phase 7 NodePort at `http://192.168.49.2:30080`.
 
@@ -28,8 +28,10 @@ read-only. Do not publish the port-forward or commit the Secret.
 
 - Each `POST /predict` emits one JSON log event with author, UTC timestamp,
   feature names only, prediction, confidence, and latency in milliseconds.
-  Invalid feature requests are logged with null prediction/confidence; values
-  from the request body are not logged.
+  Invalid feature requests are logged with null prediction/confidence. Missing
+  or malformed JSON bodies are handled before the endpoint and are also logged
+  once with empty feature names and null prediction/confidence; values from the
+  request body are not logged.
 - `GET /metrics` exposes
   `heart_disease_prediction_requests_total` and the
   `heart_disease_prediction_request_duration_seconds` histogram. The metrics
@@ -69,7 +71,9 @@ Five further valid requests and one invalid `{}` request returned five HTTP
 200 responses and one HTTP 422. The API pod log contained seven JSON events
 for the seven total requests (six successful, one invalid), each with exactly
 the documented fields and author tag; the invalid event had null prediction
-and confidence. The logged feature field contained names only.
+and confidence. The logged feature field contained names only. Automated API
+tests additionally exercise malformed JSON and a missing body, confirming each
+gets one event, one request-counter increment, and one histogram observation.
 
 After Prometheus's next 15-second scrape, its active target reported `health:
 up` with an empty `lastError`. Querying
@@ -84,6 +88,20 @@ rendered and showed total request count `7`:
 ![Live Grafana request and latency dashboard](../screenshots/phase-8-grafana-dashboard.png)
 
 ## Resource gate
+
+### Review-correction verification
+
+The corrected image was built as
+`heart-disease-2025ae05142:phase8-review` (image ID
+`sha256:427cfad548db527c26ed9b20d82e9427b51dad5404efb695f2e15a02b4fce92b`)
+and rolled out to the VM's Minikube Deployment. Through the NodePort, a
+successful sample returned HTTP 200, malformed JSON returned HTTP 422, and a
+missing body returned HTTP 422. Across those three requests, the API counter
+and histogram count each increased from 0 to 3. The API pod emitted exactly
+three JSON lines: one prediction event and two rejected-body events with empty
+feature lists and null prediction/confidence. After the next scrape,
+Prometheus reported the API target `up`, no scrape error, and request counter
+`3`.
 
 At validation, `free -h` reported 15 GiB total and 9.8 GiB available on the VM.
 The Minikube node had 4 CPUs and 15,968,384 KiB memory. `kubectl describe
@@ -105,8 +123,8 @@ placing its password in source control, and then apply the workloads:
 
 ```sh
 .venv-phase4/bin/python -m src.train.package
-docker build --tag heart-disease-2025ae05142:phase8 .
-minikube image load --profile=heart-disease heart-disease-2025ae05142:phase8
+docker build --tag heart-disease-2025ae05142:phase8-review .
+minikube image load --profile=heart-disease heart-disease-2025ae05142:phase8-review
 minikube kubectl -p heart-disease -- create configmap prometheus-config \
   -n heart-disease --from-file=prometheus.yml=monitoring/prometheus.yml \
   --dry-run=client -o yaml | minikube kubectl -p heart-disease -- apply -f -

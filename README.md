@@ -101,15 +101,15 @@ unprivileged user. Only load trusted locally generated joblib artifacts.
 
 The local cluster uses the Docker driver and loads a local image; no registry
 or cloud credentials are needed. Phase 7's smoke record preserves the Phase 6
-image/tag, while the current deployment manifest uses the instrumented Phase 8
-tag. Generate the locally ignored model artifact and build that current tag
+image/tag, while the current deployment manifest uses the reviewed Phase 8
+image tag. Generate the locally ignored model artifact and build that tag
 before applying manifests:
 
 ```sh
 python -m src.train.package
-docker build --tag heart-disease-2025ae05142:phase8 .
+docker build --tag heart-disease-2025ae05142:phase8-review .
 minikube start -p heart-disease --driver=docker --cpus=2 --memory=4096 --disk-size=20g
-minikube image load --profile=heart-disease heart-disease-2025ae05142:phase8
+minikube image load --profile=heart-disease heart-disease-2025ae05142:phase8-review
 minikube kubectl -p heart-disease -- apply -f k8s/namespace.yaml
 minikube kubectl -p heart-disease -- apply -f k8s/deployment.yaml -f k8s/service.yaml
 minikube kubectl -p heart-disease -- rollout status deployment/heart-disease-api \
