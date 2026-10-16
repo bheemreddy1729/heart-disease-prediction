@@ -87,6 +87,14 @@ rendered and showed total request count `7`:
 
 ![Live Grafana request and latency dashboard](../screenshots/phase-8-grafana-dashboard.png)
 
+The review-correction request cases were also exercised against the live VM
+API in Swagger UI (valid and malformed JSON) and a browser form that submitted
+an actually empty body. Each request incremented the API counter exactly once:
+
+- [Valid prediction: HTTP 200 and response](../screenshots/phase-8-valid-request.png)
+- [Malformed JSON: HTTP 422 validation response](../screenshots/phase-8-malformed-json.png)
+- [Missing request body: live server validation response](../screenshots/phase-8-missing-body.png)
+
 ## Resource gate
 
 ### Review-correction verification
