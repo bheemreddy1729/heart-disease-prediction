@@ -12,7 +12,7 @@ Complete one phase at a time. A phase is complete only when its gate is met; rec
 | 3 — Experiment tracking | pass | Three FINISHED local MLflow runs with required parameters, metrics, author tags, fitted pipelines, and EDA artifacts; champion registry version 1 is READY. Reloaded all three pipelines and verified predictions on 303 rows. |
 | 4 — Packaging and reproducibility | pass | Fresh isolated `.venv-phase4` installed pinned requirements, regenerated data/EDA, trained, packaged the full calibrated pipeline, and produced the sample JSON below. Repackaging reproduced artifact/report hashes. |
 | 5 — Tests and CI | pass | Ruff and 51 pytest cases pass locally; hosted run `38787031961` passed lint, test, and train with uploaded evidence. Dedicated branch run `38789263010` failed on an intentional test; reverting that commit restored green CI in run `38789471935`. Screenshots and run links recorded below. |
-| 6 — Container | not started | Docker build/run and `/predict` smoke test succeed; request/response are recorded. |
+| 6 — Container | pass | Inference-only Docker image built and ran on the VM as a non-root user; real sample `POST /predict` returned the expected JSON, and invalid input returned HTTP 422. Ruff and all 54 pytest cases passed. |
 | 7 — Kubernetes | not started | Minikube pod runs and the sample succeeds through the Service; command output and response are recorded. |
 | 8 — Monitoring and logging | not started | A prediction creates a JSON log line and increments Prometheus request metrics. |
 | 9 — Report pack | not started | Required report deliverables are complete and cross-checked. |
@@ -325,3 +325,16 @@ The reviewer correctly identified that successful runs alone did not demonstrate
 - Actual [recovered run 38789471935](https://github.com/bheemreddy1729/heart-disease-prediction/actions/runs/38789471935) passed lint, test, and train, with **51 passed in 8.88s** and an uploaded training artifact. Total duration: 2m 36s.
 - Saved and visually checked actual GitHub UI screenshots: [deliberately failed CI](../screenshots/phase-5-deliberate-failure.png) and [green CI after revert](../screenshots/phase-5-reverted-success.png). These show the same demo branch and the distinct failure/revert commits.
 - Retained the remote demo branch and both commits/runs as reviewable evidence; removed only its temporary local worktree and stopped its temporary Firefox process. This progress update and screenshots are saved locally for review; no new commit to main was made. Phase 6 remains not started.
+
+## Phase 6 evidence
+
+Author: `2025ae05142`
+
+- **Design:** Added a FastAPI endpoint that reuses `predict_records` and an inference-only Python 3.12 slim image. Exact artifact dependency versions and pinned FastAPI/Uvicorn versions are in `requirements-serving.txt`; the image copies the checked-in model and source, installs no training/MLflow/EDA stack, and runs as UID 10001. The decision and alternatives are recorded in `docs/DECISIONS.md`.
+- **VM:** Ran as user `s2025ae05142` with `HOME=/home/s2025ae05142` from `/home/s2025ae05142/workspace/Assignment-I/heart-disease-prediction`; Docker Engine 28.0.1 was reachable.
+- **Dependency and tests:** `.venv-phase4/bin/python -m pip install -r requirements-dev.txt` succeeded. `.venv-phase4/bin/python -m ruff check . && .venv-phase4/bin/python -m pytest -q` succeeded: **54 passed in 17.11s**, with one non-failing Starlette/AnyIO deprecation warning.
+- **Build:** `docker build --tag heart-disease-2025ae05142:phase6 .` succeeded. The local image is 469,189,807 bytes. The build context was 272.33 kB.
+- **Run and smoke test:** Started with `docker run --detach --name heart-disease-phase6 --publish 127.0.0.1:8000:8000 heart-disease-2025ae05142:phase6`. `docker exec heart-disease-phase6 id` confirmed `uid=10001(app)`. Posting `examples/patient.json` with `curl --fail-with-body --silent --show-error --retry 30 --retry-delay 1 --retry-connrefused -H 'Content-Type: application/json' --data-binary @examples/patient.json http://127.0.0.1:8000/predict` returned `[{"prediction":0,"confidence":0.7466949562461239}]`; posting `[]` returned HTTP 422 with an explanatory validation message. Container logs confirmed Uvicorn startup and `POST /predict` 200.
+- **Failures:** No Phase 6 gate failures. The test run emitted the noted third-party deprecation warning only; the workflow remains Phase 5 evidence and was not re-run.
+
+**Next:** Review Phase 6 and authorize Phase 7 when ready. Stop before Kubernetes.

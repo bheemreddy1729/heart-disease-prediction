@@ -74,6 +74,26 @@ The pipeline is loaded from `models/heart_pipeline.joblib`, relative to the
 repository rather than the shell working directory. **Only load trusted locally
 generated joblib/MLflow pickle artifacts**: deserialization can execute code.
 
+## HTTP API and Docker
+
+The FastAPI service exposes `POST /predict` with the same JSON list body and
+prediction-list response as `predict_records`. Invalid records return HTTP 422.
+The inference image uses the packaged model and pinned serving dependencies;
+it does not download data, train, or access MLflow.
+
+```sh
+docker build --tag heart-disease-2025ae05142:phase6 .
+docker run --rm --detach --name heart-disease-2025ae05142 \
+  --publish 127.0.0.1:8000:8000 heart-disease-2025ae05142:phase6
+curl --fail-with-body --silent --show-error \
+  -H 'Content-Type: application/json' \
+  --data-binary @examples/patient.json http://127.0.0.1:8000/predict
+docker stop heart-disease-2025ae05142
+```
+
+The port is bound to loopback for local testing. The image runs as an
+unprivileged user. Only load trusted locally generated joblib artifacts.
+
 ## Tests and CI
 
 Install development tools into the same isolated environment, then run:
@@ -90,7 +110,8 @@ their own calibrated model in temporary directories. They do not require existin
 models, MLflow state, or network access, and do not overwrite project artifacts.
 They cover data/target validation, fold-local preprocessing, CV metrics and
 champion selection, calibration packaging/provenance, and inference contracts
-including the exact 0.5 tie and attributed CLI errors.
+including the exact 0.5 tie, attributed CLI errors, and the HTTP API request and
+response contract.
 
 [GitHub Actions](.github/workflows/ci.yml) defines separate `lint`, `test`, and
 `train` jobs for pushes, pull requests, and manual dispatch. Training waits for
@@ -111,5 +132,5 @@ publication/dispatch requires the student's explicit authorization.
 
 See [progress and verification evidence](docs/PROGRESS.md),
 [design decisions](docs/DECISIONS.md), and [data provenance](docs/DATA.md).
-The serving API, Docker, Kubernetes, and monitoring belong to later phases and
-are not claimed complete here.
+The serving API and Docker image are implemented and verified as Phase 6.
+Kubernetes and monitoring remain in later phases and are not claimed complete.
