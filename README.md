@@ -99,13 +99,17 @@ unprivileged user. Only load trusted locally generated joblib artifacts.
 
 ## Kubernetes on Minikube
 
-The local cluster uses the Docker driver and loads the local Phase 6 image;
-no registry or cloud credentials are needed. Apply the manifests with
-Minikube's bundled Kubernetes client:
+The local cluster uses the Docker driver and loads a local image; no registry
+or cloud credentials are needed. Phase 7's smoke record preserves the Phase 6
+image/tag, while the current deployment manifest uses the instrumented Phase 8
+tag. Generate the locally ignored model artifact and build that current tag
+before applying manifests:
 
 ```sh
+python -m src.train.package
+docker build --tag heart-disease-2025ae05142:phase8 .
 minikube start -p heart-disease --driver=docker --cpus=2 --memory=4096 --disk-size=20g
-minikube image load --profile=heart-disease heart-disease-2025ae05142:phase6
+minikube image load --profile=heart-disease heart-disease-2025ae05142:phase8
 minikube kubectl -p heart-disease -- apply -f k8s/namespace.yaml
 minikube kubectl -p heart-disease -- apply -f k8s/deployment.yaml -f k8s/service.yaml
 minikube kubectl -p heart-disease -- rollout status deployment/heart-disease-api \
@@ -118,6 +122,16 @@ Use the printed URL for `/predict`. The NodePort Service satisfies the
 assignment requirement without a cloud load balancer. See the
 [deployment instructions](docs/DEPLOY.md) and [smoke record](docs/deploy_smoke.md)
 for verified deployment and endpoint output.
+
+## Monitoring and logging
+
+The Phase 8 API writes privacy-conscious JSON request events and exposes
+Prometheus request-count and latency metrics at `GET /metrics`. Prometheus
+scrapes the API every 15 seconds; Grafana provides a provisioned request-rate,
+latency, and total-request dashboard. The monitoring stack uses bounded local
+Kubernetes resources and loopback-only port-forward access. See
+[monitoring and smoke evidence](docs/MONITORING.md), including the live
+[Grafana dashboard screenshot](screenshots/phase-8-grafana-dashboard.png).
 
 ## Tests and CI
 
@@ -157,6 +171,6 @@ publication/dispatch requires the student's explicit authorization.
 
 See [progress and verification evidence](docs/PROGRESS.md),
 [design decisions](docs/DECISIONS.md), and [data provenance](docs/DATA.md).
-The serving API and Docker image are verified as Phase 6, and the Minikube
-Deployment and Service are verified as Phase 7. Monitoring remains in a later
-phase and is not claimed complete.
+The serving API and Docker image are verified as Phase 6, the Minikube
+Deployment and Service as Phase 7, and request monitoring as Phase 8. Phase 9
+report-pack work remains not started.

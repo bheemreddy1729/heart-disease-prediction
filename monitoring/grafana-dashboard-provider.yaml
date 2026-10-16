@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: Heart disease
+    orgId: 1
+    folder: Heart disease
+    type: file
+    disableDeletion: true
+    editable: false
+    options:
+      path: /etc/grafana/dashboards
