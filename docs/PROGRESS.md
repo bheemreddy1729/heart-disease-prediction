@@ -13,7 +13,7 @@ Complete one phase at a time. A phase is complete only when its gate is met; rec
 | 4 — Packaging and reproducibility | pass | Fresh isolated `.venv-phase4` installed pinned requirements, regenerated data/EDA, trained, packaged the full calibrated pipeline, and produced the sample JSON below. Repackaging reproduced artifact/report hashes. |
 | 5 — Tests and CI | pass | Ruff and 51 pytest cases pass locally; hosted run `38787031961` passed lint, test, and train with uploaded evidence. Dedicated branch run `38789263010` failed on an intentional test; reverting that commit restored green CI in run `38789471935`. Screenshots and run links recorded below. |
 | 6 — Container | pass | Inference-only Docker image built and ran on the VM as a non-root user; `GET /health` returned `{"status":"ok"}`, and real sample `POST /predict` returned expected JSON. Dedicated request/response and build/run evidence is in `docs/docker_smoke.md`. Ruff and all 55 pytest cases passed. |
-| 7 — Kubernetes | not started | Minikube pod runs and the sample succeeds through the Service; command output and response are recorded. |
+| 7 — Kubernetes | pass | Assignment rubric met: NodePort Service, deployment access note in `docs/DEPLOY.md`, kubectl output and sample curl response in `docs/deploy_smoke.md`; pod 1/1 Running and the sample succeeds through Minikube's NodePort URL. |
 | 8 — Monitoring and logging | not started | A prediction creates a JSON log line and increments Prometheus request metrics. |
 | 9 — Report pack | not started | Required report deliverables are complete and cross-checked. |
 
@@ -352,3 +352,33 @@ Author: `2025ae05142`
 - Corrected the earlier phrase “checked-in packaged model”: the model is gitignored and untracked, and the source artifact is locally generated before image build. No model binary was added to git.
 
 Phase 6 remains complete. Stop before Kubernetes until student review.
+
+## Phase 7 validation (initial; superseded by rubric correction below)
+
+Author: `2025ae05142`
+
+- **VM:** User `s2025ae05142`, home `/home/s2025ae05142`, repository `/home/s2025ae05142/workspace/Assignment-I/heart-disease-prediction`, Docker Engine 28.0.1, Minikube 1.35.0. Standalone `kubectl` is not installed; the Minikube-bundled client v1.32.0 was available and the Kubernetes server reports v1.32.0.
+- **Cluster:** `minikube start -p heart-disease --driver=docker --cpus=2 --memory=4096 --disk-size=20g` succeeded. `minikube status -p heart-disease` reported host, kubelet, and API server running.
+- **Image:** `minikube image load --profile=heart-disease heart-disease-2025ae05142:phase6` succeeded. The pod used local image ID `sha256:b6ef0aa7a8454109bdb78c96b3fc91aef71a7ccd559f85189d311305d831105f`; image pull policy is `Never`.
+- **Deployment:** `minikube kubectl -p heart-disease -- apply -f k8s/namespace.yaml` and `minikube kubectl -p heart-disease -- apply -f k8s/deployment.yaml -f k8s/service.yaml` succeeded. `minikube kubectl -p heart-disease -- rollout status deployment/heart-disease-api -n heart-disease --timeout=180s` returned `deployment "heart-disease-api" successfully rolled out`.
+- **Workload status before rubric correction:** Pod `heart-disease-api-745b445899-b5rgd` was `1/1 Running`, `ready=true`, `restarts=0`; the initial ClusterIP Service had endpoint `10.244.0.3:8000`. Probes use `/health`; pod security context runs UID 10001 with a read-only root filesystem and resource requests/limits.
+- **Initial Service test:** The first implementation used ClusterIP and loopback port-forward; it proved pod and Service connectivity but did not meet the assignment's required NodePort/LoadBalancer type. These results are retained as historical validation only; final gate depends on the NodePort correction and `minikube service` verification below.
+- **Initial screenshot:** The first screenshot showed the ClusterIP implementation and is superseded by the NodePort recapture linked in final evidence below.
+- **Failure note:** An initial client version probe using unsupported `minikube kubectl -p heart-disease -- version --short` exited 1 with `unknown flag: --short`. Corrected it to `minikube kubectl -p heart-disease -- version --output=yaml`, which returned client and server v1.32.0. This did not affect cluster creation or the deployment gate.
+- The initial loopback port-forward was stopped. The ClusterIP implementation did not satisfy the rubric; final evidence below records the corrected NodePort design. No monitoring work was started.
+
+### Phase 7 rubric evidence correction
+
+Author: `2025ae05142`
+
+- Rubric requirement found on recheck in `.github/agents/mlops-assignment.agent.md`: Service must be `LoadBalancer` or `NodePort`; `docs/DEPLOY.md` must describe endpoint access; and `docs/deploy_smoke.md` must retain kubectl output and curl result.
+- Updated `k8s/service.yaml` to `NodePort` at `30080`, with no public cloud dependency. Updated the Phase 7 design decision to match the rubric.
+- Final validation is recorded below after the updated NodePort was applied and the sample prediction succeeded at the URL returned by `minikube service`.
+
+#### Final NodePort gate
+
+- Applied `k8s/service.yaml`; `minikube kubectl -p heart-disease -- get service heart-disease-api -n heart-disease -o wide` returned `TYPE=NodePort`, `PORT(S)=80:30080/TCP`. Deployment stayed 1/1 available and its ready pod had zero restarts.
+- The exact endpoint-access note is in `docs/DEPLOY.md`; the dedicated required `docs/deploy_smoke.md` records the kubectl output and curl request/response.
+- `minikube service heart-disease-api -p heart-disease -n heart-disease --url` returned `http://192.168.49.2:30080`. `curl --fail-with-body --silent --show-error http://192.168.49.2:30080/health` returned `{"status":"ok"}`; posting `examples/patient.json` to `http://192.168.49.2:30080/predict` returned `[{"prediction":0,"confidence":0.7466949562461239}]`.
+- Recaptured actual VM terminal evidence after the service-type correction: [NodePort workload and live prediction](../screenshots/phase-7-kubernetes.png). The previous ClusterIP screenshot is replaced.
+- Phase 7 gate is met. Minikube and the deployment remain running; no Phase 8 monitoring work has started.

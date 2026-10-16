@@ -97,6 +97,28 @@ docker stop heart-disease-2025ae05142
 The port is bound to loopback for local testing. The image runs as an
 unprivileged user. Only load trusted locally generated joblib artifacts.
 
+## Kubernetes on Minikube
+
+The local cluster uses the Docker driver and loads the local Phase 6 image;
+no registry or cloud credentials are needed. Apply the manifests with
+Minikube's bundled Kubernetes client:
+
+```sh
+minikube start -p heart-disease --driver=docker --cpus=2 --memory=4096 --disk-size=20g
+minikube image load --profile=heart-disease heart-disease-2025ae05142:phase6
+minikube kubectl -p heart-disease -- apply -f k8s/namespace.yaml
+minikube kubectl -p heart-disease -- apply -f k8s/deployment.yaml -f k8s/service.yaml
+minikube kubectl -p heart-disease -- rollout status deployment/heart-disease-api \
+  -n heart-disease --timeout=180s
+minikube kubectl -p heart-disease -- get pods,services -n heart-disease
+minikube service heart-disease-api -p heart-disease -n heart-disease --url
+```
+
+Use the printed URL for `/predict`. The NodePort Service satisfies the
+assignment requirement without a cloud load balancer. See the
+[deployment instructions](docs/DEPLOY.md) and [smoke record](docs/deploy_smoke.md)
+for verified deployment and endpoint output.
+
 ## Tests and CI
 
 Install development tools into the same isolated environment, then run:
@@ -135,5 +157,6 @@ publication/dispatch requires the student's explicit authorization.
 
 See [progress and verification evidence](docs/PROGRESS.md),
 [design decisions](docs/DECISIONS.md), and [data provenance](docs/DATA.md).
-The serving API and Docker image are implemented and verified as Phase 6.
-Kubernetes and monitoring remain in later phases and are not claimed complete.
+The serving API and Docker image are verified as Phase 6, and the Minikube
+Deployment and Service are verified as Phase 7. Monitoring remains in a later
+phase and is not claimed complete.

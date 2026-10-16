@@ -46,7 +46,7 @@ tmpfs                                                                           
 ## Container, Kubernetes, and CI readiness
 
 - Docker CLI and daemon are available.
-- Minikube v1.35.0 is installed. No `minikube` profile/cluster exists yet; cluster startup is a later deployment-phase gate.
-- The standalone `kubectl` command is not installed. The Kubernetes deployment phase must resolve this before it can meet its gate.
+- At the Phase 0 baseline, Minikube v1.35.0 was installed and no profile/cluster existed. Phase 7 later created the `heart-disease` Docker-driver cluster successfully; deployment output is recorded in [the deployment smoke record](./deploy_smoke.md).
+- The standalone `kubectl` command is not installed. Phase 7 used Minikube's bundled `minikube kubectl` client v1.32.0, which was compatible with the Minikube Kubernetes v1.32.0 server; this resolved the CLI availability issue without installing another binary.
 - The GitHub repository API and its Actions workflows endpoint responded with HTTP 200. This confirms endpoint access only, not permission or capacity to execute workflows. No local `gh` CLI is installed; workflow execution remains unverified until Phase 5.
 - Total memory is 15 GiB; 11 GiB was available at capture time. Revisit resource use before monitoring services are started.
