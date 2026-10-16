@@ -15,6 +15,12 @@ app = FastAPI(
 )
 
 
+@app.get("/health")
+def health() -> dict[str, str]:
+    """Report that the API process is responsive."""
+    return {"status": "ok"}
+
+
 class PredictionResponse(BaseModel):
     prediction: int = Field(ge=0, le=1)
     confidence: float = Field(ge=0.5, le=1)

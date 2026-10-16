@@ -78,13 +78,16 @@ generated joblib/MLflow pickle artifacts**: deserialization can execute code.
 
 The FastAPI service exposes `POST /predict` with the same JSON list body and
 prediction-list response as `predict_records`. Invalid records return HTTP 422.
-The inference image uses the packaged model and pinned serving dependencies;
-it does not download data, train, or access MLflow.
+`GET /health` returns `{"status":"ok"}`. Before building, generate the
+gitignored model artifact with `python -m src.train.package`. The inference
+image copies this locally generated artifact and pinned serving dependencies;
+it does not download data, train, or access MLflow at startup.
 
 ```sh
 docker build --tag heart-disease-2025ae05142:phase6 .
 docker run --rm --detach --name heart-disease-2025ae05142 \
   --publish 127.0.0.1:8000:8000 heart-disease-2025ae05142:phase6
+curl --fail-with-body --silent --show-error http://127.0.0.1:8000/health
 curl --fail-with-body --silent --show-error \
   -H 'Content-Type: application/json' \
   --data-binary @examples/patient.json http://127.0.0.1:8000/predict

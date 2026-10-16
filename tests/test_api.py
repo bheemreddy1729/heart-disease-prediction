@@ -5,6 +5,13 @@ from src.infer import api
 client = TestClient(api.app)
 
 
+def test_health():
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
 def test_predict_returns_contract_shape(records, monkeypatch):
     expected = [{"prediction": 0, "confidence": 0.75}]
     monkeypatch.setattr(api, "predict_records", lambda payload: expected)

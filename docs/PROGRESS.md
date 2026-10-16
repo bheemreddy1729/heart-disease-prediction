@@ -12,7 +12,7 @@ Complete one phase at a time. A phase is complete only when its gate is met; rec
 | 3 — Experiment tracking | pass | Three FINISHED local MLflow runs with required parameters, metrics, author tags, fitted pipelines, and EDA artifacts; champion registry version 1 is READY. Reloaded all three pipelines and verified predictions on 303 rows. |
 | 4 — Packaging and reproducibility | pass | Fresh isolated `.venv-phase4` installed pinned requirements, regenerated data/EDA, trained, packaged the full calibrated pipeline, and produced the sample JSON below. Repackaging reproduced artifact/report hashes. |
 | 5 — Tests and CI | pass | Ruff and 51 pytest cases pass locally; hosted run `38787031961` passed lint, test, and train with uploaded evidence. Dedicated branch run `38789263010` failed on an intentional test; reverting that commit restored green CI in run `38789471935`. Screenshots and run links recorded below. |
-| 6 — Container | pass | Inference-only Docker image built and ran on the VM as a non-root user; real sample `POST /predict` returned the expected JSON, and invalid input returned HTTP 422. Ruff and all 54 pytest cases passed. |
+| 6 — Container | pass | Inference-only Docker image built and ran on the VM as a non-root user; `GET /health` returned `{"status":"ok"}`, and real sample `POST /predict` returned expected JSON. Dedicated request/response and build/run evidence is in `docs/docker_smoke.md`. Ruff and all 55 pytest cases passed. |
 | 7 — Kubernetes | not started | Minikube pod runs and the sample succeeds through the Service; command output and response are recorded. |
 | 8 — Monitoring and logging | not started | A prediction creates a JSON log line and increments Prometheus request metrics. |
 | 9 — Report pack | not started | Required report deliverables are complete and cross-checked. |
@@ -330,7 +330,7 @@ The reviewer correctly identified that successful runs alone did not demonstrate
 
 Author: `2025ae05142`
 
-- **Design:** Added a FastAPI endpoint that reuses `predict_records` and an inference-only Python 3.12 slim image. Exact artifact dependency versions and pinned FastAPI/Uvicorn versions are in `requirements-serving.txt`; the image copies the checked-in model and source, installs no training/MLflow/EDA stack, and runs as UID 10001. The decision and alternatives are recorded in `docs/DECISIONS.md`.
+- **Design:** Added FastAPI `GET /health` and `POST /predict`, with prediction validation reused from `predict_records`, and an inference-only Python 3.12 slim image. Exact artifact dependency versions and pinned FastAPI/Uvicorn versions are in `requirements-serving.txt`; the image copies the locally generated packaged model and source, installs no training/MLflow/EDA stack, and runs as UID 10001. The decision and alternatives are recorded in `docs/DECISIONS.md`.
 - **VM:** Ran as user `s2025ae05142` with `HOME=/home/s2025ae05142` from `/home/s2025ae05142/workspace/Assignment-I/heart-disease-prediction`; Docker Engine 28.0.1 was reachable.
 - **Dependency and tests:** `.venv-phase4/bin/python -m pip install -r requirements-dev.txt` succeeded. `.venv-phase4/bin/python -m ruff check . && .venv-phase4/bin/python -m pytest -q` succeeded: **54 passed in 17.11s**, with one non-failing Starlette/AnyIO deprecation warning.
 - **Build:** `docker build --tag heart-disease-2025ae05142:phase6 .` succeeded. The local image is 469,189,807 bytes. The build context was 272.33 kB.
@@ -338,3 +338,17 @@ Author: `2025ae05142`
 - **Failures:** No Phase 6 gate failures. The test run emitted the noted third-party deprecation warning only; the workflow remains Phase 5 evidence and was not re-run.
 
 **Next:** Review Phase 6 and authorize Phase 7 when ready. Stop before Kubernetes.
+
+### Phase 6 review corrections
+
+Author: `2025ae05142`
+
+- Added `GET /health`; `.venv-phase4/bin/python -m ruff check . && .venv-phase4/bin/python -m pytest -q` passed with **55 passed in 15.85s** and one non-failing third-party deprecation warning.
+- Confirmed `models/heart_pipeline.joblib` exists locally, is ignored by `.gitignore`, and is not tracked. It is a locally generated packaged artifact required before Docker build; it is not checked in.
+- Rebuilt with `docker build --tag heart-disease-2025ae05142:phase6 .` and ran on the VM. Live `curl` to `/health` returned `{"status":"ok"}`; sample `/predict` returned `[{"prediction":0,"confidence":0.7466949562461239}]`; `docker exec ... id` confirmed UID 10001 (`app`).
+- Added [dedicated Docker smoke evidence](docker_smoke.md) containing the request body, response, VM execution location, build/run commands, and non-root verification. The temporary review container was stopped and removed.
+- Captured actual VM terminal screenshots while the container was live: [health endpoint and non-root verification](../screenshots/phase-6-health.png) and [sample request body and prediction response](../screenshots/phase-6-predict.png). Both show real commands and responses; neither was recreated.
+- Captured additional actual Docker CLI evidence for [the built image](../screenshots/phase-6-docker-image.png) and [running container usage](../screenshots/phase-6-docker-container.png), including image ID/size, live status, published loopback port, CPU/memory stats, non-root user, and health response.
+- Corrected the earlier phrase “checked-in packaged model”: the model is gitignored and untracked, and the source artifact is locally generated before image build. No model binary was added to git.
+
+Phase 6 remains complete. Stop before Kubernetes until student review.
