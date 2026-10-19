@@ -1,0 +1,27 @@
+Heart Disease Prediction - MLOps Assignment 1
+Author: 2025ae05142
+Course: AIMLCZG523
+
+REPORT
+ASSIGNMENT_REPORT.pdf (10 pages)
+Repository copy: docs/ASSIGNMENT_REPORT.pdf
+
+GITHUB REPOSITORY
+https://github.com/bheemreddy1729/heart-disease-prediction
+
+DEMONSTRATION VIDEO
+https://drive.google.com/file/d/1-wEoLDfVbTFAlR3ZZ06UIUIfSedHGWc4/view?usp=sharing
+
+DEPLOYMENT AND API ACCESS
+The API is deployed on local Minikube on the BITS Prayogshala Linux VM.
+It is not a publicly accessible endpoint.
+Reproduction and access instructions:
+https://github.com/bheemreddy1729/heart-disease-prediction#kubernetes-on-minikube
+
+The README includes model preparation, image build, deployment, and tunnel
+commands, followed by sample GET /health and POST /predict requests.
+
+CODE AND EVIDENCE
+The repository contains data preparation, EDA, training and inference scripts,
+unit tests, GitHub Actions, Docker and Kubernetes configurations, generated
+results, and screenshots.

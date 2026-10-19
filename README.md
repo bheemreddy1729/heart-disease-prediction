@@ -7,7 +7,7 @@ Uses the UCI processed Cleveland dataset and compares Logistic Regression,
 Random Forest, and RBF SVC with leakage-safe preprocessing and stratified CV.
 This is coursework, not a medical diagnostic tool.
 
-## Reproduce on the VM
+## Setup and training
 
 Run from the repository root with Python 3.12. No cloud account is required.
 Create an isolated environment (do not use `--system-site-packages`):
