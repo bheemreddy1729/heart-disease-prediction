@@ -5,6 +5,10 @@ Author: `2025ae05142`
 Course: AIMLCZG523  
 Repository: [bheemreddy1729/heart-disease-prediction](https://github.com/bheemreddy1729/heart-disease-prediction)
 
+## Demonstration video
+
+[Watch the pipeline demonstration on Google Drive](https://drive.google.com/file/d/1-wEoLDfVbTFAlR3ZZ06UIUIfSedHGWc4/view?usp=sharing).
+
 ## Executive summary
 
 This project implements a reproducible machine-learning workflow for the
@@ -16,11 +20,14 @@ a local Minikube deployment. GitHub Actions checks the code and reproduces the
 training workflow. Prometheus metrics, privacy-conscious request logs, and a
 Grafana dashboard provide operational visibility.
 
-The workflow has evidence for each stage in the repository. Those records show
-that the project ran on the BITS Prayogshala Linux VM, the hosted CI workflow
-completed successfully, and the local Kubernetes service returned predictions.
-The evaluation is coursework evidence, not clinical validation or a claim that
-the model is appropriate for diagnosis or treatment.
+Every stage was run on the BITS Prayogshala Linux VM, the hosted CI workflow
+passed, and the local Kubernetes service returned predictions; the repository
+holds the records for each step. This is coursework, not a clinically
+validated model (see Section 10).
+
+I used GitHub Copilot as a coding assistant for parts of the code and
+documentation. I ran every step on the VM myself and reviewed the outputs
+reported here.
 
 ## 1. Scope and reproducible environment
 
@@ -29,10 +36,9 @@ serving, testing, CI, deployment, and monitoring into one traceable workflow
 without requiring cloud accounts. Implementation and runtime validation were
 performed on the BITS Prayogshala Linux VM as user `s2025ae05142`, in the
 repository at `/home/s2025ae05142/workspace/Assignment-I/heart-disease-prediction`.
-The recorded environment includes Python, Docker, and Minikube. The VM did not
-have standalone `kubectl`; deployment commands used the compatible client
-bundled with Minikube. See the [environment
-record](./DECISIONS.md#historical-vm-baseline) and [progress evidence](./PROGRESS.md).
+The VM had Python 3.12.9, Docker 28.0.1, and Minikube 1.35.0, but no
+standalone `kubectl`; deployment commands used the compatible client bundled
+with Minikube.
 
 The following sequence follows the repository's [README](../README.md). It
 creates an isolated Python environment, installs the pinned dependencies,
@@ -40,15 +46,15 @@ checks dependency consistency, regenerates the data and reports, trains and
 packages the model, then exercises the sample inference command:
 
 ```sh
-python3 -m venv .venv-phase4
-.venv-phase4/bin/python -m pip install -r requirements.txt
-.venv-phase4/bin/python -m pip check
-.venv-phase4/bin/python src/data/download_heart.py
-.venv-phase4/bin/python src/data/prepare.py
-.venv-phase4/bin/python src/eda/explore.py
-.venv-phase4/bin/python src/train/train.py
-.venv-phase4/bin/python -m src.train.package
-.venv-phase4/bin/python -m src.infer.predict --input examples/patient.json
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python -m pip check
+.venv/bin/python src/data/download_heart.py
+.venv/bin/python src/data/prepare.py
+.venv/bin/python src/eda/explore.py
+.venv/bin/python src/train/train.py
+.venv/bin/python -m src.train.package
+.venv/bin/python -m src.infer.predict --input examples/patient.json
 ```
 
 The documented inference result is a JSON list. Each item has an integer
@@ -66,8 +72,8 @@ using the processed Cleveland file. It contains 303 patient records, 13
 clinical feature columns, and the original `num` outcome. Preparation maps
 `num=0` to absence (`0`) and original values `1` through `4` to presence (`1`).
 The source's `?` values are retained as missing rather than dropping records or
-estimating values during EDA. The [data provenance note](./DECISIONS.md#data-provenance) records the
-source, download date, and preparation commands.
+estimating values during EDA. The file was downloaded on 2026-10-15 by
+`src/data/download_heart.py`.
 
 The target distribution is 164 absent and 139 present records. Six feature
 cells are missing: four in `ca` and two in `thal`; the other reported columns
@@ -80,17 +86,29 @@ without allowing imputation statistics to use data before model validation.
 For modelling, five measurements (`age`, `trestbps`, `chol`, `thalach`, and
 `oldpeak`) are treated as continuous numeric features. Eight coded features
 (`sex`, `cp`, `fbs`, `restecg`, `exang`, `slope`, `ca`, and `thal`) are treated
-as categorical values. The detailed rationale—including why missing values
-are not imputed in the EDA stage—is recorded in [design decisions](./DECISIONS.md).
+as categorical values. The reasoning behind these and later choices is in the
+[README design decisions](../README.md#design-decisions).
+
+![Numeric feature distributions generated during Phase 1](../reports/figures/feature_histograms.png)
+
+*Phase 1: distributions of the numeric clinical features, excluding missing
+values per feature.*
+
+![Feature correlation heatmap generated during Phase 1](../reports/figures/correlation_heatmap.png)
+
+*Phase 1: correlations calculated using pairwise complete observations.*
+
+![Target class balance generated during Phase 1](../reports/figures/class_balance.png)
+
+*Phase 1: target counts after mapping the original outcome to binary labels.*
 
 ## 3. Candidate models and validation
 
 Three model families were compared: Logistic Regression, Random Forest, and an
 RBF-kernel Support Vector Classifier. Logistic Regression provides a regularized
 linear baseline, Random Forest can represent nonlinear splits and interactions,
-and the RBF SVC tests a smooth nonlinear boundary. This comparison is appropriate
-for exploring different decision structures on a small tabular dataset; it is
-not evidence that one algorithm is universally superior.
+and the RBF SVC tests a smooth nonlinear boundary. Together they cover three
+quite different decision structures on a small tabular dataset.
 
 Each candidate is evaluated through a scikit-learn pipeline. Continuous
 features use median imputation and standardization. Categorical features use
@@ -111,10 +129,9 @@ rule, `rbf_svc` is the champion:
 | Random Forest | 0.8384 ± 0.0310 | 0.8505 ± 0.0612 | 0.7913 ± 0.0306 | 0.9144 ± 0.0255 |
 | RBF SVC | 0.8448 ± 0.0506 | 0.8501 ± 0.0666 | 0.8056 ± 0.0656 | 0.9021 ± 0.0319 |
 
-These are cross-validation estimates on a small dataset. Candidate selection
-used the same dataset, and there is no claim here of an independent test-set
-estimate or clinical performance. The complete comparison and champion rule
-are in [model_comparison.md](../reports/model_comparison.md).
+These are cross-validation estimates; there is no separate held-out test set.
+The complete comparison and champion rule are in
+[model_comparison.md](../reports/model_comparison.md).
 
 ### Hyperparameter tuning and deployment decision
 
@@ -137,17 +154,14 @@ Values are CV means; standard deviations, all configurations, and actual run
 IDs appear in [the tuning summary](../reports/tuning_summary.md). The selected
 configuration's run ID is `05e2a3643a7444788a4945f2e8d6b9ad`. Its recall mean
 increased by `0.007143`, while ROC-AUC decreased by `0.000216`, calculated from
-unrounded results. The original candidate selection and tuning reuse the same
-dataset; these are selection results, not independent evidence of improved
-generalization or a global optimum.
+unrounded results. Because tuning reuses the same data, this is a small
+selection gain rather than proof of better generalization.
 
-Following review, the deployment decision was to retain the existing validated
-calibrated baseline. The tuning winner remains the winner of the declared grid
-ranking, but has not been calibrated, packaged, or promoted. A small reused-data
-CV gain does not by itself justify replacing the validated serving artifact.
-These uncalibrated tuning scores must not be confused with the separate
-calibrated probability diagnostics below. Any future promotion would require
-additional evaluation and full downstream validation.
+I decided to keep the existing calibrated baseline in production. The tuning
+winner has not been calibrated, packaged, or promoted, and a gain this small
+on reused data did not justify replacing an artifact that had already passed
+every downstream check. Note that the tuning scores above are uncalibrated and
+are not comparable with the calibrated diagnostics in Section 4.
 
 ## 4. Experiment tracking and packaged confidence
 
@@ -170,6 +184,18 @@ artifacts. The uncalibrated candidate champion is registered as
 calibrated serving artifact are separate: the serving artifact does not
 overwrite or relabel the registry candidate's metrics.
 
+![Historical Phase 3 MLflow candidate experiment runs](../screenshots/phase-3-mlflow-experiment.png)
+
+*Phase 3 historical capture: candidate runs, validation metrics, author tags,
+and retained failed attempts. The table above describes the later successful
+batch, not the run IDs in this earlier capture.*
+
+![Historical Phase 3 uncalibrated champion registry](../screenshots/phase-3-mlflow-registry.png)
+
+*Phase 3 historical capture: registry version 1, tagged as uncalibrated.
+The later batch summarized above registered version 2; neither registry
+version is the separate calibrated serving artifact.*
+
 For serving probabilities, packaging wraps the selected full preprocessing
 and classifier pipeline in a sigmoid `CalibratedClassifierCV`. The recorded
 evaluation uses five outer stratified folds and five inner calibration folds,
@@ -180,13 +206,17 @@ out-of-fold accuracy `0.854785`, precision `0.851852`, recall `0.827338`,
 ROC-AUC `0.905115`, Brier score `0.121745`, log loss `0.392889`, and a
 training-fold prevalence baseline Brier score of `0.248313`.
 
-These diagnostics are post-selection because candidate selection used this
-dataset. They do not establish independent generalization, perfect calibration,
-clinical suitability, or a treatment threshold. Inference predicts class 1
+These diagnostics are post-selection, since the same data chose the model.
+Inference predicts class 1
 when disease probability is greater than `0.5`; otherwise it predicts class
 0. An exact tie at `0.5` returns class 0 because the validated class order is
 `[0, 1]`. The returned confidence is the probability of the chosen class, not
 certainty.
+
+![Phase 4 calibrated packaging and sample inference on the VM](../screenshots/phase-4-packaging-inference.png)
+
+*Phase 4: packaging diagnostics and the sample CLI prediction from the separate
+calibrated serving pipeline.*
 
 ## 5. System architecture
 
@@ -215,10 +245,8 @@ flowchart LR
     CI --> Artifact
 ```
 
-The diagram summarizes the implementation represented by the repository; it
-does not imply that training occurs inside Minikube or that MLflow is a serving
-dependency. The source code, manifests, workflow, and smoke records provide the
-implementation details.
+Training happens outside the cluster; Minikube only runs the serving image, and
+MLflow is not needed at serving time.
 
 ## 6. API and container
 
@@ -233,8 +261,19 @@ On the VM, the Phase 6 image build succeeded. `GET /health` returned
 `{"status":"ok"}` and a `POST /predict` using `examples/patient.json` returned
 `[{"prediction":0,"confidence":0.7466949562461239}]`. The recorded container
 ran as user `app` (UID 10001), and the temporary smoke-test container was
-stopped and removed after verification. Full commands and output are in
-[deploy_smoke.md#docker-container-smoke-evidence](./deploy_smoke.md#docker-container-smoke-evidence).
+stopped and removed after verification. The commands are in the
+[README Docker section](../README.md#http-api-and-docker).
+
+![Phase 6 running Docker container, resource usage, and health response](../screenshots/phase-6-docker-container.png)
+
+*Phase 6: running container, loopback port mapping, non-root user, and health
+response. This is the original container smoke evidence, not the later
+instrumented Kubernetes deployment.*
+
+![Phase 6 Docker sample prediction request and response](../screenshots/phase-6-predict.png)
+
+*Phase 6: sample feature-only JSON body and the prediction returned through
+the container's published port.*
 
 ## 7. Kubernetes deployment
 
@@ -242,25 +281,23 @@ The deployment uses a single-node local Minikube cluster with the Docker driver.
 The locally built image is loaded into the cluster rather than pulled from a
 public registry. A namespace, one-replica Deployment, and LoadBalancer Service
 provide local API access through `minikube tunnel`; health probes use `/health`.
-The Service retains nodePort `30080` as an additional route. This design avoids
-cloud accounts and meets the assignment PDF's Load Balancer or Ingress
-requirement. NodePort alone, used in the initial deployment, did not meet that
-exposure requirement.
+The Service keeps nodePort `30080` as an extra route. My first deployment used
+NodePort only; I switched to LoadBalancer after rechecking the assignment,
+which asks for a Load Balancer or Ingress.
 
 The corrected deployment was verified on the current VM with `minikube tunnel`
 running. Its LoadBalancer external address was `10.97.154.192`; health returned
 `{"status":"ok"}` and sample prediction returned
 `[{"prediction":0,"confidence":0.7466949562461239}]`.
 The API pod was ready with zero restarts and the retained NodePort route still
-worked. These are local Minikube observations, not a claim of a public or
-production cloud load balancer. The
-[LoadBalancer correction evidence](./deploy_smoke.md#loadbalancer-correction-2026-10-19)
-records the commands and results. To reproduce local access, follow
-[the deployment instructions](./DEPLOY.md), keeping the tunnel running.
+worked. The address is local to the VM, not a public cloud endpoint. To
+reproduce local access, follow the
+[Kubernetes steps in the README](../README.md#kubernetes-on-minikube), keeping
+the tunnel running.
 
 ![Live VM LoadBalancer deployment and endpoint checks](../screenshots/phase-7-loadbalancer.png)
 
-The genuine terminal capture above shows the ready API pod, LoadBalancer
+The terminal capture above shows the ready API pod, LoadBalancer
 external address, health response, and prediction. The additional
 [tunnel and request-log capture](../screenshots/phase-7-loadbalancer-tunnel.png)
 shows the running local tunnel, route, sample request, and attributed event.
@@ -272,26 +309,32 @@ The GitHub Actions workflow in `.github/workflows/ci.yml` has separate `lint`,
 from the committed raw data, evaluates and tracks the model candidates,
 packages the calibrated serving model, verifies outputs, and uploads a
 training evidence artifact. The test suite builds test artifacts in temporary
-locations rather than relying on ignored model or MLflow files. Local
-reproduction commands, test outcomes, and workflow limitations are recorded
-in [PROGRESS.md](./PROGRESS.md).
+locations rather than relying on ignored model or MLflow files. Ruff and the
+full pytest suite also passed locally on the VM.
 
 The project includes a deliberate CI failure and its recovery: an explicitly
-added assertion failed, then the workflow returned to green after that test
-was reverted. The [Phase 5 failure/recovery record](./PROGRESS.md#phase-5-review-correction-deliberate-failure-followed-by-revert)
-documents the actual hosted runs and screenshots. Later, an initial Phase 8
-hosted run exposed a clean-runner test dependency on an ignored local model
-artifact; the test was corrected to use an isolated fixture, as detailed in
-the [Phase 8 review correction](./PROGRESS.md#phase-8-review-correction). The
-[verified hosted Actions run](https://github.com/bheemreddy1729/heart-disease-prediction/actions/runs/38955767909)
+added assertion
+[failed in run 38789263010](https://github.com/bheemreddy1729/heart-disease-prediction/actions/runs/38789263010),
+then the workflow
+[returned to green in run 38789471935](https://github.com/bheemreddy1729/heart-disease-prediction/actions/runs/38789471935)
+after that test was reverted. Later, an initial Phase 8
+[hosted run](https://github.com/bheemreddy1729/heart-disease-prediction/actions/runs/38952933435)
+exposed a clean-runner test dependency on an ignored local model artifact; I
+changed the test to use an isolated fixture. The
+[next hosted run](https://github.com/bheemreddy1729/heart-disease-prediction/actions/runs/38955767909)
 completed successfully on `main`. GitHub reports successful `lint`, `test`,
 and `train` jobs, and the training evidence artifact
 `training-evidence-2025ae05142` was uploaded.
 
-That hosted run is evidence that the workflow succeeded at the recorded
-revision. The earlier failing runs are retained as diagnostic evidence; they
-are not presented as successful runs. The detailed job and artifact evidence,
-along with local Ruff and pytest results, is in [PROGRESS.md](./PROGRESS.md).
+![Phase 5 deliberate test failure in GitHub Actions](../screenshots/phase-5-deliberate-failure.png)
+
+*Phase 5 historical run 38789263010: lint passed, the intentional test failed,
+and dependent training was skipped.*
+
+![Phase 5 successful GitHub Actions workflow after reverting the deliberate failure](../screenshots/phase-5-reverted-success.png)
+
+*Phase 5 historical recovery run 38789471935: lint, test, and train passed,
+with one uploaded artifact.*
 
 ## 9. Monitoring and request privacy
 
@@ -310,17 +353,16 @@ HTTP 422 for invalid requests; request counters and histogram observations
 increased as expected. Prometheus reported the API target up with no scrape
 error, and Grafana loaded the provisioned dashboard. The review-correction
 validation checked a valid request, malformed JSON, and a missing body, with
-the counter and histogram each increasing exactly once per request. See
-[DEPLOY.md#monitoring-and-logging](./DEPLOY.md#monitoring-and-logging) for commands, actual outputs, privacy details,
-resource observations, and links to real screenshots.
+the counter and histogram each increasing exactly once per request. The
+[README monitoring section](../README.md#monitoring-and-logging) has the
+deployment and access commands.
 
 After the LoadBalancer correction, the existing Prometheus/Grafana workloads
 were restored and reverified on the current VM. All three pods were ready with
 zero restarts, the scrape target was up, and valid and rejected requests each
 incremented the API counter and latency observation exactly once. No monitoring
 code change was needed because the internal Service scrape address stayed the
-same. The [restoration record](./DEPLOY.md#restored-monitoring-verification-2026-10-19)
-distinguishes these current checks from the historical execution.
+same.
 
 ![Restored Grafana dashboard with live request and latency data](../screenshots/phase-8-restored-grafana.png)
 
@@ -343,14 +385,12 @@ verified scope.
 
 ## Evidence index
 
-- [Data source and preparation](./DECISIONS.md#data-provenance)
-- [Design rationale and alternatives](./DECISIONS.md)
+- [Design decisions and data source](../README.md#design-decisions)
 - [EDA summary and figures](../reports/eda_summary.md)
 - [Model comparison](../reports/model_comparison.md)
 - [Hyperparameter tuning results](../reports/tuning_summary.md)
 - [MLflow run summary](../reports/mlflow_summary.md)
 - [Calibration diagnostics](../reports/calibration_summary.md)
-- [Docker smoke record](./deploy_smoke.md#docker-container-smoke-evidence)
-- [Kubernetes smoke record](./deploy_smoke.md)
-- [Monitoring and logging evidence](./DEPLOY.md#monitoring-and-logging)
-- [Phase-by-phase validation record](./PROGRESS.md)
+- [Screenshots folder](../screenshots/)
+- [Kubernetes and monitoring setup](../README.md#kubernetes-on-minikube)
+- [GitHub Actions run history](https://github.com/bheemreddy1729/heart-disease-prediction/actions)

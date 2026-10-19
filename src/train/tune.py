@@ -94,7 +94,7 @@ def format_report(
             "summary. No registered model or serving artifact is changed. The deployed "
             "calibrated baseline remains unchanged pending an explicit promotion decision.",
             "",
-            "Reproduce on the VM: `.venv-phase4/bin/python -m src.train.tune`. "
+            "Reproduce on the VM: `.venv/bin/python -m src.train.tune`. "
             "This appends tuning runs and updates only this tuning summary.",
         ]
     )
