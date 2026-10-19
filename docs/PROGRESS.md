@@ -6,16 +6,16 @@ Complete one phase at a time. A phase is complete only when its gate is met; rec
 
 | Phase | Status | Gate / evidence |
 |---|---|---|
-| 0 — Lab baseline | pass | `docs/ENVIRONMENT.md` records the Linux VM baseline. Python 3.12.9 satisfies the >=3.10 gate; Docker and Minikube are installed. GitHub Actions API access returned HTTP 200; workflow execution remains unverified until Phase 5. |
+| 0 — Lab baseline | pass | `docs/DECISIONS.md#historical-vm-baseline` records the Linux VM baseline. Python 3.12.9 satisfies the >=3.10 gate; Docker and Minikube are installed. GitHub Actions API access returned HTTP 200; workflow execution remains unverified until Phase 5. |
 | 1 — Data and EDA | pass | UCI download, preparation, and EDA commands succeeded; 303 rows, target counts 164/139, 6 reported missing feature values, summary, and all three figures verified below. |
 | 2 — Features and models | pass | `python3 src/train/train.py` completed reproducibly; all three leakage-safe candidate pipelines were evaluated with five-fold stratified CV and all four metrics, and `reports/model_comparison.md` records the comparison and champion rule. |
 | 3 — Experiment tracking | pass | Three FINISHED local MLflow runs with required parameters, metrics, author tags, fitted pipelines, and EDA artifacts; champion registry version 1 is READY. Reloaded all three pipelines and verified predictions on 303 rows. |
 | 4 — Packaging and reproducibility | pass | Fresh isolated `.venv-phase4` installed pinned requirements, regenerated data/EDA, trained, packaged the full calibrated pipeline, and produced the sample JSON below. Repackaging reproduced artifact/report hashes. |
 | 5 — Tests and CI | pass | Ruff and 51 pytest cases pass locally; hosted run `38787031961` passed lint, test, and train with uploaded evidence. Dedicated branch run `38789263010` failed on an intentional test; reverting that commit restored green CI in run `38789471935`. Screenshots and run links recorded below. |
-| 6 — Container | pass | Inference-only Docker image built and ran on the VM as a non-root user; `GET /health` returned `{"status":"ok"}`, and real sample `POST /predict` returned expected JSON. Dedicated request/response and build/run evidence is in `docs/docker_smoke.md`. Ruff and all 55 pytest cases passed. |
-| 7 — Kubernetes | pass | Assignment rubric met: NodePort Service, deployment access note in `docs/DEPLOY.md`, kubectl output and sample curl response in `docs/deploy_smoke.md`; pod 1/1 Running and the sample succeeds through Minikube's NodePort URL. |
-| 8 — Monitoring and logging | pass | Monitoring gate and review fixes pass locally and on Minikube. Verified hosted run [38955767909](https://github.com/bheemreddy1729/heart-disease-prediction/actions/runs/38955767909) completed with conclusion `success` on `main` at `52eeb00ec45e42eaa5c114964694bc04e662167d`; all three jobs (`lint`, `test`, `train`) succeeded and training evidence artifact `training-evidence-2025ae05142` was uploaded. |
-| 9 — Report pack | not started | Required report deliverables are complete and cross-checked. |
+| 6 — Container | pass | Inference-only Docker image built and ran on the VM as a non-root user; `GET /health` returned `{"status":"ok"}`, and real sample `POST /predict` returned expected JSON. Dedicated request/response and build/run evidence is in `docs/deploy_smoke.md#docker-container-smoke-evidence`. Ruff and all 55 pytest cases passed. |
+| 7 — Kubernetes | pass | Primary-PDF exposure correction verified: LoadBalancer/tunnel health and prediction checks pass; retained NodePort checks pass too. Genuine LoadBalancer and tunnel screenshots captured and visually checked. Commands, restoration details, and results are in `docs/deploy_smoke.md`. |
+| 8 — Monitoring and logging | pass | Restored and reverified on the current VM after LoadBalancer correction: API/Prometheus/Grafana ready, metrics/log assertions pass, scrape target up, fresh dashboard/metrics screenshots verified. Historical hosted run [38955767909](https://github.com/bheemreddy1729/heart-disease-prediction/actions/runs/38955767909) passed lint, test, and train at `52eeb00ec45e42eaa5c114964694bc04e662167d` with uploaded training evidence. |
+| 9 — Report pack | in progress | Report draft, decisions, consolidated documentation with root README navigation, and screenshot checklist exist. Deployment/monitoring evidence refreshed; tuning documented and baseline retained. Recording guide, video/link, final document formatting, and submission checks remain pending. |
 
 ## Phase 0 evidence
 
@@ -346,7 +346,7 @@ Author: `2025ae05142`
 - Added `GET /health`; `.venv-phase4/bin/python -m ruff check . && .venv-phase4/bin/python -m pytest -q` passed with **55 passed in 15.85s** and one non-failing third-party deprecation warning.
 - Confirmed `models/heart_pipeline.joblib` exists locally, is ignored by `.gitignore`, and is not tracked. It is a locally generated packaged artifact required before Docker build; it is not checked in.
 - Rebuilt with `docker build --tag heart-disease-2025ae05142:phase6 .` and ran on the VM. Live `curl` to `/health` returned `{"status":"ok"}`; sample `/predict` returned `[{"prediction":0,"confidence":0.7466949562461239}]`; `docker exec ... id` confirmed UID 10001 (`app`).
-- Added [dedicated Docker smoke evidence](docker_smoke.md) containing the request body, response, VM execution location, build/run commands, and non-root verification. The temporary review container was stopped and removed.
+- Added [dedicated Docker smoke evidence](deploy_smoke.md#docker-container-smoke-evidence) containing the request body, response, VM execution location, build/run commands, and non-root verification. The temporary review container was stopped and removed.
 - Captured actual VM terminal screenshots while the container was live: [health endpoint and non-root verification](../screenshots/phase-6-health.png) and [sample request body and prediction response](../screenshots/phase-6-predict.png). Both show real commands and responses; neither was recreated.
 - Captured additional actual Docker CLI evidence for [the built image](../screenshots/phase-6-docker-image.png) and [running container usage](../screenshots/phase-6-docker-container.png), including image ID/size, live status, published loopback port, CPU/memory stats, non-root user, and health response.
 - Corrected the earlier phrase “checked-in packaged model”: the model is gitignored and untracked, and the source artifact is locally generated before image build. No model binary was added to git.
@@ -403,3 +403,260 @@ Author: `2025ae05142`
 - Built and deployed `heart-disease-2025ae05142:phase8-review`; all three API/Prometheus/Grafana pods were ready, API with zero restarts. Live VM calls returned HTTP 200 for the sample, HTTP 422 for malformed JSON, and HTTP 422 for a missing body. Counter and histogram each increased from `0` to `3`, and pod logs contained exactly three events: one prediction and two invalid-body events with no feature values. Prometheus then reported target `up`, no scrape error, and request counter `3`.
 - Captured actual browser evidence for each live request: [successful prediction](../screenshots/phase-8-valid-request.png), [malformed JSON rejection](../screenshots/phase-8-malformed-json.png), and [missing-body rejection](../screenshots/phase-8-missing-body.png). Screenshots complement the [Grafana dashboard](../screenshots/phase-8-grafana-dashboard.png); they are responses from the live Minikube NodePort, not recreated examples.
 - The initial hosted run [`38952933435`](https://github.com/bheemreddy1729/heart-disease-prediction/actions/runs/38952933435) failed because the clean-runner test depended on the ignored model; that result was superseded after the correction was published. Verified run [`38955767909`](https://github.com/bheemreddy1729/heart-disease-prediction/actions/runs/38955767909) is completed with conclusion `success` on `main` at commit `52eeb00ec45e42eaa5c114964694bc04e662167d` (including correction commit `a2f34a4`). GitHub Actions reports all three jobs—`lint`, `test`, and `train`—as successful; the training job completed output verification and uploaded artifact `training-evidence-2025ae05142` (artifact ID `12070747169`). This confirms the Phase 8 hosted CI gate; Phase 8 is `pass`.
+
+## Primary-PDF deployment correction (2026-10-19)
+
+Author: `2025ae05142`
+
+- The assignment PDF requires Load Balancer or Ingress exposure. Earlier
+  NodePort-only compliance claims above are superseded; their request results
+  remain genuine historical connectivity evidence.
+- With student approval at each step, probed the current VM, verified retained
+  model/data hashes and dependency versions, smoke-tested the rebuilt image,
+  recreated the absent Minikube cluster, and restored the API. No retraining,
+  new MLflow runs, commits, or pushes occurred.
+- Selected LoadBalancer plus `minikube tunnel` as the simplest compliant local
+  route. The proposed bundled Ingress controller was not enabled because
+  ingress-nginx is retired. The rationale and official sources are in
+  [decisions](DECISIONS.md).
+- Server-side dry run and application of `k8s/service.yaml` passed. The Service
+  reports `LoadBalancer`, external IP `10.97.154.192`; the pod is 1/1 Running
+  with zero restarts. Health and sample prediction through the external address
+  passed exact-response assertions, and retained NodePort curl checks passed.
+  [Deployment smoke evidence](deploy_smoke.md#loadbalancer-correction-2026-10-19)
+  records commands, VM location, output, and resolved startup failure.
+- The local tunnel remains running and must stay active for LoadBalancer
+  access. At this deployment-correction step, Prometheus/Grafana had not yet
+  been restored; the subsequent Phase 8 restoration is recorded below.
+- The draft report, README, deployment instructions, and screenshot checklist
+  now describe LoadBalancer exposure. The LoadBalancer screenshots were
+  subsequently captured and verified below. Phase 9 remains paused for review.
+- Documentation checks on the current VM: `git diff --check` passed, and a
+  Python check of local Markdown file links found no missing targets. The
+  documented LoadBalancer curl commands were executed successfully. No Python
+  application code changed; no unit-test rerun was needed for this Service and
+  documentation correction.
+
+### LoadBalancer screenshot verification (2026-10-19)
+
+Author: `2025ae05142`
+
+- At the student's explicit request, ran real VM commands in an XFCE terminal
+  and captured only that terminal window. Visually inspected both saved PNGs:
+  [pod, Service, health, and prediction](../screenshots/phase-7-loadbalancer.png)
+  and [running tunnel, route, request, and logs](../screenshots/phase-7-loadbalancer-tunnel.png).
+- The first image shows the VM identity, running cluster, 1/1 Running API pod
+  with zero restarts, LoadBalancer external IP `10.97.154.192`, and successful
+  health/prediction curl output. The second shows the actual `minikube tunnel`
+  process and route, sample input, prediction response, HTTP 200, and an
+  attributed JSON request event.
+- An initial capture showed the locked desktop; it was rejected and deleted.
+  The student unlocked the desktop before capture was retried. A subsequent
+  tunnel capture clipped its initial lines; it was replaced by a compact
+  rerun of the real commands. No output was fabricated or recreated.
+- Temporary capture terminals were closed. The application cluster and
+  LoadBalancer tunnel remain running. No training, commit, push, or video
+  recording was performed. Phase 7's corrected deployment gate is now `pass`.
+
+## Phase 8 restoration after LoadBalancer correction (2026-10-19)
+
+Author: `2025ae05142`
+
+- With student approval, probed the current VM (15 GiB total, 11 GiB available
+  RAM), restored ConfigMaps and the existing monitoring workloads, and created
+  a private randomly generated Grafana admin Secret without exposing it.
+  Both monitoring rollout commands completed successfully.
+- API, Prometheus, and Grafana are each 1/1 Running with zero restarts.
+  Monitoring Services remain ClusterIP and the API remains LoadBalancer.
+  Loopback port-forwards at 19090/13000 are running and responsive.
+- A VM Python HTTP validation checked valid/malformed/missing-body requests:
+  HTTP 200/422/422 respectively. Counter and histogram both increased 8 to 11;
+  request-event assertions passed, including null outputs/empty feature names
+  for invalid bodies. Prometheus target was up with no scrape error and
+  counter 11; rate/latency queries returned finite values. Grafana health
+  reported database ok and the provisioned dashboard had three panels.
+- Captured and visually inspected the genuine [restored Grafana dashboard](../screenshots/phase-8-restored-grafana.png)
+  (total count 11) and [metrics/workload terminal evidence](../screenshots/phase-8-restored-metrics.png)
+  (a further real request increased both counts 11 to 12). No output or panel
+  data was recreated. The integrated browser required Dev Tunnels login;
+  used direct VM-local Firefox without changing access controls.
+- Full commands, outputs, historical/current distinctions, and resource
+  observations are in [DEPLOY.md#monitoring-and-logging](DEPLOY.md#restored-monitoring-verification-2026-10-19).
+  No API code or monitoring configuration changes were necessary; no tests,
+  training, hosted CI, commit, push, or video recording were run. Temporary
+  capture windows were closed; tunnel and port-forwards remain available.
+- Final VM validation: `git diff --check` and local Markdown file/image link
+  checks passed; both screenshot files have valid PNG signatures and were
+  visually inspected. Prometheus's final query confirmed counter 12 after the
+  terminal-capture request. Temporary capture helpers/profile were removed.
+
+### Evidence organization review (2026-10-19)
+
+Author: `2025ae05142`
+
+- Student selected retaining history while prioritizing current evidence.
+  README now links to the corrected LoadBalancer and restored monitoring
+  captures. Deployment/monitoring evidence documents open with current-evidence
+  links and explicitly label superseded captures as historical.
+- The active Deployment uses `heart-disease-2025ae05142:phase8-review`;
+  Kubernetes/monitoring manifests remain in use. No stale project image was
+  found in the host Docker image listing; the saved model and MLflow history
+  were not deletion candidates. No screenshots, code, runtime artifacts, or
+  historical experiment records were deleted.
+
+## Model tuning follow-up: design gate (2026-10-19)
+
+Author: `2025ae05142`
+
+- Status: `in progress`. Primary-PDF review identified that model selection
+  was documented but a tuning process was not demonstrated by the original
+  fixed candidate configurations.
+- With explicit student approval, recorded only the bounded nine-configuration
+  RBF SVC tuning design, validation/ranking rule, separate MLflow/report
+  evidence, statistical limitations, and preservation/promotion boundary in
+  [DECISIONS.md](DECISIONS.md#model-tuning-follow-up-approved-design-2026-10-19).
+- No tuning implementation, experiment execution, model promotion, training,
+  dependency installation, deployment change, commit, or push occurred in this
+  step. Existing Phase 2 results and Phase 7/8 evidence are unchanged.
+- Next approval gate: implement and test the separate tuning workflow before
+  authorizing the actual experiment run. This documentation step alone does
+  not satisfy the outstanding tuning evidence requirement.
+
+### Tuning implementation and isolated validation (2026-10-19)
+
+Author: `2025ae05142`
+
+- With student approval, implemented [the separate tuning command](../src/train/tune.py)
+  and extracted `evaluate_candidates` from the existing training evaluation.
+  `evaluate_models` still uses the original three candidates and unchanged
+  scoring, preprocessing, folds, validation, and full-data fitting behavior.
+- The new command defines the approved nine configurations, requires the
+  original baseline, uses existing champion ranking, and logs each configuration
+  in a separate local tuning experiment. Run artifacts include configuration
+  scores, preprocessing/dependency metadata, a recall comparison plot, and the
+  summary with real run IDs. No registry promotion or serving artifact writes
+  are performed. README documents execution and limitations.
+- Added tests for the grid, empty-candidate/missing-baseline errors, and real
+  two-configuration cross-validation with a temporary SQLite/artifact store
+  and report. The integration test verifies FINISHED attributed runs, metric
+  keys/ranges, baseline recall, report/run IDs, nonempty artifacts, and absence
+  of a registered model or baseline report/model outputs in its temporary area.
+- Execution location: current Prayogshala Linux VM, repository root.
+  The VS Code test tool returned "No tests found"; used the existing project
+  interpreter/pytest runner instead. Final command:
+  `.venv-phase4/bin/python -m ruff check src/train/train.py src/train/tune.py tests/test_tuning.py && .venv-phase4/bin/python -m pytest -q tests/test_training.py tests/test_tuning.py`.
+  Ruff passed; pytest reported `15 passed` in 16.81 seconds, with one
+  non-failing MLflow/SQLAlchemy deprecation warning. `git diff --check` passed.
+- The full nine-configuration experiment has not run. Only reduced-grid tests
+  used temporary experiment storage; no new main-store tuning evidence or
+  `reports/tuning_summary.md` is claimed. Existing generated reports are
+  unchanged in git status. No live deployment, model artifact, registry
+  champion, commit, or push was changed by this step.
+- Next approval gate: execute the full tuning experiment, verify persisted
+  runs/artifacts and the report, and review results without automatic promotion.
+
+### Full tuning execution and evidence verification (2026-10-19)
+
+Author: `2025ae05142`
+
+- With explicit student approval, ran
+  `.venv-phase4/bin/python -m src.train.tune` on the current Prayogshala VM.
+  The timed command completed in 29.83 seconds, including evaluation and local
+  MLflow logging. This is a measured observation, not a future runtime guarantee.
+- All nine configurations produced FINISHED runs in the separate experiment.
+  Independently queried the local MLflow store and verified author tags,
+  non-promotion status, eight metric keys per run, a single selected
+  configuration, and nonempty plot/report artifacts. The persisted
+  [tuning summary](../reports/tuning_summary.md) contains real run IDs.
+- Selected configuration: `C=1, gamma=0.1`; recall mean `0.812698` versus
+  baseline `0.805556`, a mean difference of `+0.007143`. ROC-AUC difference
+  is `-0.000216`. These are reused-data selection results, not independent
+  performance improvement or clinical evidence. No promotion decision has
+  been made.
+- Before/after SHA-256 assertions confirmed the serving model/provenance and
+  original model comparison, MLflow summary, and calibration report were
+  unchanged. Registry verification confirmed only original versions 1 and 2
+  and no tuning run registered. The initial verification assertion compared
+  integer versions with strings and failed; normalizing version types fixed
+  that verification-only error. It was not an experiment or registry failure.
+- The live LoadBalancer sample still returned
+  `[{"prediction":0,"confidence":0.7466949562461239}]`.
+  `git diff --check` passed. No Docker rebuild, deployment change, hosted CI
+  execution, commit, or push occurred.
+- Recording preparation: use the persisted report/MLflow evidence to explain
+  tuning; rerunning it on camera is not necessary unless specifically requested.
+  A recording plan should preflight/warm the environment and use actual quick
+  prediction, workload, and metrics checks, clearly distinguishing saved
+  experiment evidence from newly executed commands. No recording guide or
+  video was created in this step.
+- Next approval gate: review the tuning result and decide whether to retain
+  the validated deployed baseline or undertake a separate promotion and full
+  downstream revalidation. The small observed CV gain alone is not proof that
+  promotion is justified.
+
+### Approved baseline retention (2026-10-19)
+
+Author: `2025ae05142`
+
+- Student approved retaining the deployed calibrated baseline rather than
+  promoting the tuning winner. Recorded the rationale and the distinction
+  between grid selection and deployment promotion in [DECISIONS.md](DECISIONS.md).
+- Added the actual grid, validation/ranking method, separate experiment,
+  baseline/winner metrics, selected run ID, and statistical limitations to
+  [ASSIGNMENT_REPORT.md](ASSIGNMENT_REPORT.md). The generated tuning summary remains the original
+  execution record; this subsequent retention decision is documented here
+  and in decisions rather than rewriting experimental history.
+- Documentation-only step: no model, registry, image, deployment, training,
+  commit, or push changes. Recording guide and final submission-format
+  corrections remain separate steps.
+
+### Documentation consolidation (2026-10-19)
+
+Author: `2025ae05142`
+
+- Student chose to retain both folders and consolidate written documentation
+  and navigation, rather than move generated reports or delete evidence.
+- Added [a single documentation/results index](../README.md#documentation-and-results), identifying the
+  canonical guide for each topic and the commands producing each generated
+  result. It distinguishes saved evidence from commands that mutate artifacts.
+- Updated the repository README to use the index, corrected stale hosted-CI
+  and Phase 9 status wording, and removed repetitive NodePort execution
+  narrative from the report while preserving its detailed smoke history.
+- No generated reports, code, tests, CI paths, screenshots, experiment history,
+  model artifacts, or deployments were moved, deleted, or modified.
+
+### Physical documentation merge (2026-10-19)
+
+Author: `2025ae05142`
+
+- After clarification, the student explicitly approved reducing the number of
+  actual documentation files, not just adding navigation.
+- Merged data provenance and the original VM baseline into
+  [DECISIONS.md](DECISIONS.md#data-provenance); monitoring instructions and
+  historical/current validation into [DEPLOY.md](DEPLOY.md#monitoring-and-logging);
+  and Docker execution evidence into
+  [deploy_smoke.md](deploy_smoke.md#docker-container-smoke-evidence).
+- Moved the documentation/results index into the
+  [root README](../README.md#documentation-and-results). Removed the five
+  superseded documentation sources after merging them. The earlier proposal's
+  count of six removals was a counting error; the approved named sources
+  total five.
+- Updated active README/report/evidence/checklist references to their retained
+  files and section anchors. Original numerical results, commands, failures,
+  historical captures, and source attribution are preserved. Generated
+  reports, scripts, tests, CI, model artifacts, and runtime remain untouched.
+- Validation on the current VM: `git diff --check` and active documentation
+  file/image/heading-anchor checks passed. No training, deployment commands,
+  tests, commit, or push were run for this documentation-only merge.
+
+### Assignment report filename clarification (2026-10-19)
+
+Author: `2025ae05142`
+
+- With student approval, renamed the written report to
+  [ASSIGNMENT_REPORT.md](ASSIGNMENT_REPORT.md), preserving its contents.
+- Updated root navigation, decisions, progress links, and the custom agent's
+  report-path references. Generated `reports/` outputs remain unchanged.
+- Validation on the current VM: `git diff --check`, old-path reference search,
+  and local Markdown link-target checks passed. No runtime changes, tests,
+  commit, or push; Phase 9 remains in progress.

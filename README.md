@@ -118,10 +118,16 @@ minikube kubectl -p heart-disease -- get pods,services -n heart-disease
 minikube service heart-disease-api -p heart-disease -n heart-disease --url
 ```
 
-Use the printed URL for `/predict`. The NodePort Service satisfies the
-assignment requirement without a cloud load balancer. See the
+The printed URL is the retained NodePort route. To meet the assignment PDF's
+Load Balancer or Ingress requirement, the Service now uses `LoadBalancer`.
+Run `minikube tunnel -p heart-disease` in a separate VM terminal and keep it
+running, then use the Service's assigned `EXTERNAL-IP` for `/health` and
+`/predict`. This is local VM access, not a public cloud endpoint. See the
 [deployment instructions](docs/DEPLOY.md) and [smoke record](docs/deploy_smoke.md)
 for verified deployment and endpoint output.
+
+Current verified captures: [LoadBalancer deployment and responses](screenshots/phase-7-loadbalancer.png)
+and [tunnel and request logs](screenshots/phase-7-loadbalancer-tunnel.png).
 
 ## Monitoring and logging
 
@@ -130,10 +136,31 @@ Prometheus request-count and latency metrics at `GET /metrics`. Prometheus
 scrapes the API every 15 seconds; Grafana provides a provisioned request-rate,
 latency, and total-request dashboard. The monitoring stack uses bounded local
 Kubernetes resources and loopback-only port-forward access. See
-[monitoring and smoke evidence](docs/MONITORING.md), including the live
-[Grafana dashboard screenshot](screenshots/phase-8-grafana-dashboard.png).
+[monitoring and smoke evidence](docs/DEPLOY.md#monitoring-and-logging), including the live
+[restored Grafana dashboard screenshot](screenshots/phase-8-restored-grafana.png)
+and [workloads and metrics increment](screenshots/phase-8-restored-metrics.png).
 
 ## Tests and CI
+
+### Optional tuning follow-up
+
+The separate tuning command evaluates the predeclared nine-configuration RBF
+SVC grid using the same fold-local preprocessing and recall-first ranking:
+
+```sh
+.venv-phase4/bin/python -m src.train.tune
+```
+
+Run it only when ready to append experiments. It writes
+`reports/tuning_summary.md` and logs configuration parameters, four CV metrics
+and standard deviations, scores, a comparison plot, and report/run IDs in the
+separate local `heart-disease-tuning-2025ae05142` MLflow experiment. It does not
+register a champion, overwrite baseline reports/models, or change the deployed
+API. Scores are tuning/selection results on the reused dataset, not independent
+test estimates. Promotion requires a separate review and downstream validation.
+The design is recorded in [decisions](docs/DECISIONS.md#model-tuning-follow-up-approved-design-2026-10-19).
+
+### Validation commands
 
 Install development tools into the same isolated environment, then run:
 
@@ -163,14 +190,67 @@ to the original runner; regenerate locally rather than assuming the downloaded
 store is portable. Treat serialized models as trusted-code artifacts, not safe
 arbitrary uploads.
 
-Local workflow-command reproduction is recorded in [progress](docs/PROGRESS.md).
-A hosted green run is not claimed until this workflow is published and executed;
-publication/dispatch requires the student's explicit authorization.
+Hosted run [38955767909](https://github.com/bheemreddy1729/heart-disease-prediction/actions/runs/38955767909)
+passed lint, test, and train at its recorded revision. Local reproduction,
+failure/recovery evidence, and historical hosted results are in
+[progress](docs/PROGRESS.md); this is not a claim that later unpushed changes
+have run on GitHub. New publication/dispatch requires explicit authorization.
 
-## Phase boundaries
+## Documentation and results
 
-See [progress and verification evidence](docs/PROGRESS.md),
-[design decisions](docs/DECISIONS.md), and [data provenance](docs/DATA.md).
-The serving API and Docker image are verified as Phase 6, the Minikube
-Deployment and Service as Phase 7, and request monitoring as Phase 8. Phase 9
-report-pack work remains not started.
+Written guidance and evidence are consolidated into the documents below; generated results remain in `reports/` with unchanged script and CI paths.
+
+### Submission material
+
+- [Assignment report source](docs/ASSIGNMENT_REPORT.md): coursework narrative, selected results,
+  architecture, and genuine screenshots. Still a draft; the final 10-page
+  DOC/DOCX/PDF, video link, and upload-size checks remain pending.
+- [Screenshot checklist](docs/screenshots/README.md): maps assignment evidence to
+  actual captures under [screenshots/](screenshots/). Images are not copied
+  into this documentation folder.
+
+### Current setup and operation
+
+| Topic | Canonical guide |
+|---|---|
+| Installation, data/model reproduction, API, Docker, tests, and tuning commands | [Repository README](#reproduce-on-the-vm) |
+| Dataset source, target mapping, and missing values | [Data provenance](docs/DECISIONS.md#data-provenance) |
+| Local Kubernetes LoadBalancer access and tunnel lifecycle | [Deployment instructions](docs/DEPLOY.md) |
+| Request logging, metrics, Prometheus, and Grafana | [Monitoring guide](docs/DEPLOY.md#monitoring-and-logging) |
+| Design rationale, alternatives, and baseline-retention decision | [Project decisions](docs/DECISIONS.md) |
+
+### Generated results
+
+These files in [reports/](reports/) are written by project commands, not
+parallel hand-written reports. Use them as the numerical source for the final
+report; do not manually edit results to match a preferred outcome.
+
+| Result | Producing command |
+|---|---|
+| [EDA summary](reports/eda_summary.md) and [figures](reports/figures/) | `.venv-phase4/bin/python src/eda/explore.py` |
+| [Model comparison](reports/model_comparison.md) and [MLflow summary](reports/mlflow_summary.md) | `.venv-phase4/bin/python src/train/train.py` |
+| [Calibration diagnostics](reports/calibration_summary.md) and reliability figure | `.venv-phase4/bin/python -m src.train.package` |
+| [Tuning summary](reports/tuning_summary.md) | `.venv-phase4/bin/python -m src.train.tune` |
+
+Training appends MLflow runs/registry versions; packaging rewrites the local
+serving artifact; tuning appends separate experiment runs without promotion.
+Reading saved results does not require rerunning these commands. The baseline
+model comparison, uncalibrated tuning results, and calibrated serving diagnostics
+describe different evaluations and must not be combined as one score.
+
+### Validation and history
+
+- [Progress](docs/PROGRESS.md): phase status, dated commands/outcomes, failures and
+  corrections, and approval boundaries; not a second submission report.
+- [Docker smoke record](docs/deploy_smoke.md#docker-container-smoke-evidence): actual container build/run proof.
+- [Deployment smoke record](docs/deploy_smoke.md): current LoadBalancer evidence and
+  explicitly retained historical NodePort checks.
+- [Monitoring restoration](docs/DEPLOY.md#restored-monitoring-verification-2026-10-19):
+  current validation and captures; earlier monitoring records are historical.
+- [Environment baseline](docs/DECISIONS.md#historical-vm-baseline): original VM probe, not a guarantee
+  that a later VM has identical state.
+
+Preserve genuine historical evidence, but use current LoadBalancer and restored
+monitoring captures for the submission. The final PDF should contain its key
+results and access instructions rather than require the reader to follow local
+filesystem links.

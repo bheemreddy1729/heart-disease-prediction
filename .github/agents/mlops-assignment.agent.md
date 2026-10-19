@@ -140,7 +140,7 @@ Gate: a curl to `/predict` produces a log line, and `curl /metrics` shows the re
 
 ## Phase 9 — Report pack (2 marks)
 
-Write `docs/REPORT.md` in the student's own words from the artifacts already produced. Target about 10 pages when exported to PDF. Include:
+Write `docs/ASSIGNMENT_REPORT.md` in the student's own words from the artifacts already produced. Target about 10 pages when exported to PDF. Include:
 
 - setup commands that match `README.md`
 - EDA findings and the modelling choices from `docs/DECISIONS.md`
@@ -160,7 +160,7 @@ Create `docs/screenshots/README.md` listing the shots the student must capture t
 
 Do not invent screenshots. Leave a video checklist in `docs/VIDEO.md`: download, train, test, docker predict, Kubernetes predict, metrics. The student records it.
 
-Gate: `docs/REPORT.md` cites only numbers that appear in `reports/` or the smoke files.
+Gate: `docs/ASSIGNMENT_REPORT.md` cites only numbers that appear in `reports/` or the smoke files.
 
 ## Decision points you must write down before coding them
 

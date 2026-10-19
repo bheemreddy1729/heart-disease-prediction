@@ -113,6 +113,15 @@ def evaluate_models(
     data: pd.DataFrame,
 ) -> tuple[pd.DataFrame, dict[str, Pipeline]]:
     """Cross-validate each candidate and fit its full-data pipeline for later phases."""
+    return evaluate_candidates(data, build_models())
+
+
+def evaluate_candidates(
+    data: pd.DataFrame, candidates: dict[str, BaseEstimator]
+) -> tuple[pd.DataFrame, dict[str, Pipeline]]:
+    """Evaluate named estimators using the shared validation and preprocessing."""
+    if not candidates:
+        raise ValueError("At least one candidate is required")
     expected_features = NUMERIC_FEATURES + CATEGORICAL_FEATURES
     missing_columns = set(expected_features + [TARGET]).difference(data.columns)
     if missing_columns:
@@ -129,7 +138,7 @@ def evaluate_models(
     result_rows: list[dict[str, float | str]] = []
     fitted_pipelines: dict[str, Pipeline] = {}
 
-    for name, estimator in build_models().items():
+    for name, estimator in candidates.items():
         pipeline = build_pipeline(estimator)
         scores = cross_validate(
             pipeline,
